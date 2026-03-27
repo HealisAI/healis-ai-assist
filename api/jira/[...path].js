@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const segments = req.query.path || []
   const base = process.env.JIRA_BASE_URL || 'https://healis.atlassian.net'
   const url = `${base}/${segments.join('/')}`
