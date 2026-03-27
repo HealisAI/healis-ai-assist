@@ -309,7 +309,7 @@ export default function HealisApp() {
     setStage(STAGE.PROCESSING); setAppError(null);
     setProcessingMsg("Claude analyseert uw melding…");
     try {
-      const res = await fetch("/api/anthropic/v1/messages", {
+      const res = await fetch("/api/anthropic", {
         method:"POST", headers:API_HEADERS,
         body: JSON.stringify({
           model:"claude-sonnet-4-6", max_tokens:1800,
@@ -385,7 +385,7 @@ Prioriteiten:
     try {
       for (const draft of ticketDrafts) {
         const fields = buildJiraFields(draft, matchedPharmacy, inputText);
-        const res = await fetch("/api/jira/rest/api/3/issue", {
+        const res = await fetch("/api/jira", {
           method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields })
         });
         const data = await res.json();
