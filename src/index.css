@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Fonts — closest match to Healis' Gopher + General Sans */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+
+  /* Healis brand */
+  --green:          #008624;
+  --green-dark:     #006b1d;
+  --green-light:    #e8f5ec;
+  --green-border:   #7ac483;
+  --purple:         #8c84e3;
+  --purple-dark:    #6b63c9;
+  --purple-light:   #f0eeff;
+  --purple-border:  #b8b3ee;
+  --beige:          #efebe0;
+  --beige-dark:     #e5e0d2;
+
+  /* Semantic tokens used by the component */
+  --color-background-primary:   #ffffff;
+  --color-background-secondary: #f5f3ee;
+  --color-background-tertiary:  #efebe0;
+
+  --color-text-primary:   #2a2a2a;
+  --color-text-secondary: #4a4a4a;
+  --color-text-tertiary:  #767676;
+
+  --color-border-primary:   #c5c2b8;
+  --color-border-secondary: #dddbd5;
+  --color-border-tertiary:  #eceae4;
+
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
+
+#root { min-height: 100vh; }

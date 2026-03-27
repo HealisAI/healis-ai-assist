@@ -1,0 +1,811 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+
+const API_HEADERS = { "Content-Type": "application/json" };
+
+// ── PHARMACY DATA ─────────────────────────────────────────────────────────────
+const PHARMACIES = [
+  { alias:"AAA", name:"Apotheek Jongen",            city:"Aalst",               phone:"053/77 74 60", email:"apotheek.jongen@healis.be",           province:"Oost-Vlaanderen", apb:"APB 410201" },
+  { alias:"AAG", name:"Apotheek Roosevelt",          city:"Antwerpen",           phone:"03/233 54 53", email:"apotheek.roosevelt@healis.be",        province:"Antwerpen",       apb:"APB 110271" },
+  { alias:"AAJ", name:"Apotheek Sint-Jacob",         city:"Antwerpen",           phone:"03/231 93 74", email:"apotheek.sintjacob@healis.be",        province:"Antwerpen",       apb:"APB 110219" },
+  { alias:"AAK", name:"Apotheek Van Ghyseghem",      city:"Antwerpen",           phone:"03/238 57 59", email:"apotheek.kloosterstraat@healis.be",   province:"Antwerpen",       apb:"APB 110315" },
+  { alias:"AAR", name:"Apotheek Van De Vel",         city:"Ardooie",             phone:"051/74 40 17", email:"apotheek.vandevel@healis.be",         province:"West-Vlaanderen", apb:"APB 360101" },
+  { alias:"AAS", name:"Apotheek Vandenweghe",        city:"Ardooie",             phone:"051/74 41 91", email:"apotheek.vandenweghe@healis.be",      province:"West-Vlaanderen", apb:"APB 360102" },
+  { alias:"AAT", name:"Apotheek Broeckx",            city:"Antwerpen",           phone:"03/233 60 65", email:"apotheek.broeckx@healis.be",          province:"Antwerpen",       apb:"APB 110248" },
+  { alias:"ABB", name:"Kruispuntapotheek",           city:"Baal",                phone:"016/53 53 01", email:"kruispuntapotheek@healis.be",         province:"Vlaams Brabant",  apb:"APB 240602" },
+  { alias:"ABE", name:"Apotheek Poppe",              city:"Beernem",             phone:"050/78 88 99", email:"apotheek.poppe@healis.be",            province:"West-Vlaanderen", apb:"APB 310302" },
+  { alias:"ABO", name:"Apotheek Boeykens",           city:"Bornem",              phone:"03/889 06 21", email:"apotheek.bornem@healis.be",           province:"Brussel",         apb:"APB 120701" },
+  { alias:"ABP", name:"Apotheek Baal",               city:"Baal",                phone:"016/53 00 42", email:"apotheek.baal@healis.be",             province:"Vlaams Brabant",  apb:"APB 240601" },
+  { alias:"ABV", name:"Apotheek Vandekerckhove",     city:"Roeselare-Beveren",   phone:"051/25 00 90", email:"apotheek.vandekerckhove@healis.be",   province:"West-Vlaanderen", apb:"APB 361518" },
+  { alias:"AGE", name:"Apotheek Thiels",             city:"Geel",                phone:"014/58 85 75", email:"apotheek.thiels@healis.be",           province:"Antwerpen",       apb:"APB 130801" },
+  { alias:"AHI", name:"Apotheek Hildegard",          city:"Evere (Brussel)",     phone:"02/215 37 12", email:"hildegard@healis.be",                 province:"Brussel",         apb:"APB 211406" },
+  { alias:"AHO", name:"Apotheek Houthalen",          city:"Houthalen",           phone:"011/52 27 55", email:"apotheek.houthalen@healis.be",        province:"Limburg",         apb:"APB 721505" },
+  { alias:"AKD", name:"Apotheek Kermt",              city:"Kermt",               phone:"011/25 24 52", email:"apotheek.kermt@healis.be",            province:"Limburg",         apb:"APB 712902" },
+  { alias:"AKK", name:"Apotheek Engelen",            city:"Kermt",               phone:"011/25 53 05", email:"apotheek.engelen@healis.be",          province:"Limburg",         apb:"APB 712901" },
+  { alias:"AKN", name:"Apotheek Demarez",            city:"Knokke-Heist",        phone:"050/60 26 51", email:"apotheek.demarez@healis.be",          province:"West-Vlaanderen", apb:"APB 311402" },
+  { alias:"ALA", name:"Apotheek Landen",             city:"Landen",              phone:"011/88 38 51", email:"apotheek.vanbrabant@healis.be",       province:"Vlaams Brabant",  apb:"APB 246002" },
+  { alias:"ALD", name:"Apotheek Lummen",             city:"Lummen",              phone:"013/53 11 53", email:"apotheek.lummen@healis.be",           province:"Limburg",         apb:"APB 713701" },
+  { alias:"ALG", name:"Apotheek Genenbos",           city:"Lummen",              phone:"011/42 16 85", email:"apotheek.genenbos@healis.be",         province:"Limburg",         apb:"APB 713703" },
+  { alias:"AOO", name:"Apotheek Piers",              city:"Oostende",            phone:"059/70 28 25", email:"apotheek.piers@healis.be",            province:"West-Vlaanderen", apb:"APB 351314" },
+  { alias:"ARK", name:"Apotheek Desloovere",         city:"Rollegem-Kapelle",    phone:"056/50 66 30", email:"apotheek.desloovere@healis.be",       province:"West-Vlaanderen", apb:"APB 361003" },
+  { alias:"ARU", name:"Apotheek Vierstraete",        city:"Roeselare-Rumbeke",   phone:"051/20 22 67", email:"apotheek.vierstraete@healis.be",      province:"West-Vlaanderen", apb:"APB 361703" },
+  { alias:"ASL", name:"Apotheek Bollengier",         city:"Sleidinge",           phone:"09/357 35 24", email:"apotheek.bollengier@healis.be",       province:"Oost-Vlaanderen", apb:"APB 446602" },
+  { alias:"ATR", name:"Apotheek Tremelo",            city:"Tremelo",             phone:"016/53 00 31", email:"apotheek.tremelo@healis.be",          province:"Vlaams Brabant",  apb:"APB 263502" },
+  { alias:"AVO", name:"Pharmacie Place Saint-Denis", city:"Brussel-Vorst",       phone:"02/378 36 74", email:"pharmacie.placesaintdenis@healis.be", province:"Brussel",         apb:"APB 211619" },
+  { alias:"AWE", name:"Apotheek Cools",              city:"Wenduine",            phone:"050/41 15 96", email:"apotheek.cools@healis.be",            province:"West-Vlaanderen", apb:"APB 313901" },
+  { alias:"AWR", name:"Apotheek Vlamynck",           city:"Westrozebeke",        phone:"051/78 05 06", email:"apotheek.westrozebeke@healis.be",     province:"West-Vlaanderen", apb:"APB 362001" },
+  { alias:"AZE", name:"Apotheek Zedelgem",           city:"Zedelgem",            phone:"050/20 94 41", email:"apotheek.zedelgem@healis.be",         province:"West-Vlaanderen", apb:"APB 314102" },
+  { alias:"AZU", name:"Apotheek Martens",            city:"Zutendaal",           phone:"089/61 16 74", email:"apotheek.thoen@healis.be",            province:"Limburg",         apb:"APB 716701" },
+];
+
+function matchPharmacy(text) {
+  if (!text) return null;
+  const t = text.toLowerCase();
+  return (
+    PHARMACIES.find(p => t.includes(p.alias.toLowerCase())) ||
+    PHARMACIES.find(p => p.name.toLowerCase().split(" ").filter(w => w.length > 3).some(w => t.includes(w))) ||
+    PHARMACIES.find(p => { const c = p.city.toLowerCase().replace(/\d+\s*/g,"").trim(); return c.length > 3 && t.includes(c); }) ||
+    null
+  );
+}
+
+// ── JIRA OPTION MAPS ──────────────────────────────────────────────────────────
+const JIRA_APOTHEEK_MAP = {
+  AAA:"AAA - Apotheek Jongen",       AAG:"AAG - Apotheek Roosevelt",
+  AAJ:"AAJ - Apotheek Sint-Jacob",   AAK:"AAK - Apotheek Kloosterstraat",
+  AAR:"AAR - Apotheek Van De Vel",   AAS:"AAS - Apotheek Vandenweghe",
+  AAT:"AAT - Apotheek Broeckx",      ABB:"ABB - Kruispuntapotheek",
+  ABE:"ABE - Apotheek Poppe",        ABO:"ABO - Apotheek Boeykens",
+  ABP:"ABP - Apotheek Baal",         ABV:"ABV - Apotheek Vandekerckhove",
+  AGE:"AGE - Apotheek Thiels",       AHI:"AHI - Apotheek Hildegard",
+  AHO:"AHO - Apotheek Houthalen",    AKD:"AKD - Apotheek Kermt",
+  AKK:"AKK - Apotheek Engelen",      AKN:"AKN - Apotheek Demarez",
+  ALA:"ALA - Apotheek Landen",       ALD:"ALD - Apotheek Lummen",
+  ALG:"ALG - Apotheek Genenbos",     AOO:"AOO - Apotheek Piers",
+  ARK:"ARK - Apotheek Desloovere",   ARU:"ARU - Apotheek Vierstraete",
+  ASL:"ASL - Apotheek Bollengier",   ATR:"ATR - Apotheek Tremelo",
+  AVO:"AVO - Pharmacie Place Saint-Denis", AWE:"AWE - Apotheek Cools",
+  AWR:"AWR - Apotheek Vlamynck",     AZE:"AZE - Apotheek Zedelgem",
+  AZU:"AZU - Apotheek Martens",
+};
+const IT_CATEGORIE_MAP   = { Internet:"Internet (Wi-Fi, Netwerk, ...)", Software:"Software (Farmad, Microsoft, ...)", Hardware:"Hardware (Computer, Kassa, Betaalterminal, ...)", Account:"Account (Paswoord, Access, ...)", Andere:"Andere" };
+const GEBOUW_TYPE_MAP    = { Deuren:"Deuren, sloten, badges, rolluiken", Elektriciteit:"Elektriciteit, zekeringen, stopcontacten", Verwarming:"Verwarming, airco, ventilatie", Water:"Water, lekkage, vocht, geur", Alarm:"Alarm, camera's, noodverlichting", Schoonmaak:"Schoonmaak, verlichting, ramen", Andere:"Andere" };
+const APOTHEEK_TYPE_MAP  = { Toonbank:"Toonbank, kasten, schappen, laden", Stoelen:"Stoelen, tafels, consultruimte", Koelmeubels:"Koelmeubels/koelkasten (in apotheek)", Signalisatie:"Signalisatie, displays, etalageframes", Rekken:"Rekken, trolleys, klein materiaal", Labomateriaal:"Labomateriaal (weegschalen, mortieren, geluliers, zalfmolens,...)", Bureaumateriaal:"Klein bureaumateriaal (papier, pennen, toner, \u2026)", Andere:"Andere" };
+const HR_PLANNING_MAP    = { Bezetting:"Bezetting & planning", Vacatures:"Vacatures & vervanging", Teamafspraken:"Teamafspraken & samenwerking", Evaluaties:"Evaluaties & feedback", Escalaties:"Escalaties & personeeldossiers", Andere:"Andere" };
+const HR_MEDEWERKER_MAP  = { Onboarding:"Onboarding & offboarding", Loon:"Loon, attesten, correcties", Verlof:"Verlof, ziekte, afwezigheden", Opleiding:"Opleiding, certificaten", Welzijn:"Welzijn, conflict ", Andere:"Andere" };
+const KLACHT_MAP         = { Service:"Service & wachttijd", Medicatie:"Medicatie & advies", Prijs:"Prijs & terugbetaling", Voorraad:"Voorraad & bestelling", Privacy:"Privacy & administratie", Andere:"Andere" };
+
+// ── STAGE & CATEGORY META ─────────────────────────────────────────────────────
+const STAGE = { SELECT:"select", IDLE:"idle", RECORDING:"recording", PROCESSING:"processing", REVIEW:"review", CREATING:"creating", DONE:"done" };
+
+const CAT_META = {
+  IT:           { label:"IT Support",         color:"#E8F5EC", tx:"#008624", br:"#7AC483", project:"IT",  issueType:"Support" },
+  Gebouwbeheer: { label:"Facility · Gebouw",  color:"#FFF4E5", tx:"#854F0B", br:"#EF9F27", project:"FAM", issueType:"Incident" },
+  Apotheek:     { label:"Facility · Apotheek",color:"#E1F5EE", tx:"#008624", br:"#5DCAA5", project:"FAM", issueType:"Service Request" },
+  HR_Medewerker:{ label:"HR · Medewerker",    color:"#F0EEFF", tx:"#6B63C9", br:"#B8B3EE", project:"HR",  issueType:"Issue" },
+  HR_Planning:  { label:"HR · Planning",      color:"#F0EEFF", tx:"#6B63C9", br:"#B8B3EE", project:"HR",  issueType:"Issue" },
+  Klacht:       { label:"Operations · Klacht",color:"#FCEBEB", tx:"#A32D2D", br:"#F09595", project:"OPS", issueType:"Task" },
+};
+const PRIORITY_META = {
+  "Business Critical":{ color:"#FCEBEB", tx:"#A32D2D", br:"#F09595", dot:"🔴" },
+  "High":             { color:"#FFF4E5", tx:"#854F0B", br:"#EF9F27", dot:"🟠" },
+  "Medium":           { color:"#E8F5EC", tx:"#008624", br:"#7AC483", dot:"🟡" },
+  "Low":              { color:"#F1EFE8", tx:"#5F5E5A", br:"#B4B2A9", dot:"⚪" },
+  "Lowest":           { color:"#F1EFE8", tx:"#5F5E5A", br:"#B4B2A9", dot:"⚪" },
+};
+
+// ── SHARED UI COMPONENTS ──────────────────────────────────────────────────────
+function HealisLogo({ width = 110 }) {
+  const h = Math.round(width * 168.53 / 593.26);
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 593.26 168.53" width={width} height={h} aria-label="Healis">
+      <path fill="#008624" d="M0 75.31h64.23V85H0zM75.88 97.22h9.69v64.23h-9.69zM75.88 0h9.69v64.23h-9.69z"/>
+      <path fill="#8c84e3" d="M97.22 75.88h64.23v9.69H97.22zM173.1 0h9.69v161.45h-9.69z"/>
+      <g fill="#008624">
+        <path d="M566.66 122.66c15.18 0 26.6-6.94 26.6-18.48 0-10.71-10.12-16.12-24.01-18.01-12.83-1.77-19.77-4.12-19.77-8.12 0-4.24 7.06-7.18 17.07-7.18s17.42 3.41 17.42 8.24h8.24c0-11.18-10.59-19.3-25.66-19.3-14.12 0-25.19 6.59-25.19 17.77 0 10.36 9.42 16.01 23.3 18.01 13.06 1.77 20.36 3.88 20.36 8.36s-7.41 7.65-18.24 7.65-18.48-3.77-18.48-9.06h-8c0 11.53 10.83 20.13 26.36 20.13M519 121.24h8V61.22h-8zm4-71.91c4.24 0 7.41-2.82 7.41-6.36s-3.18-6.47-7.41-6.47-7.41 2.82-7.41 6.47 3.18 6.36 7.41 6.36m-29.18 71.91h8V36.51h-8v84.74zm-48.73-10c-13.54 0-23.54-8.59-23.54-20.01s10-20.01 23.54-20.01 23.54 8.59 23.54 20.01-10.12 20.01-23.54 20.01m23.54-50.02v15.42c-4.47-10.12-13.77-16.83-25.42-16.83-17.18 0-30.01 13.53-30.01 31.42s12.83 31.42 30.01 31.42c11.65 0 20.95-6.71 25.42-16.83v15.42h8V61.22zm-96.86 10.12c11.77 0 21.3 6.36 23.42 15.54h-46.84c2.24-9.18 11.53-15.54 23.42-15.54m31.9 20.13c0-18.24-13.77-31.66-31.9-31.66s-32.01 13.53-32.01 31.42 13.77 31.42 32.13 31.42c14.01 0 25.54-7.41 30.48-18.71h-9.77c-4.12 4.35-11.89 7.18-20.6 7.18-12.24 0-21.42-6.47-23.66-15.65h55.08c.12-1.3.24-2.71.24-4m-86.85-51.43v34.13h-49.43V40.04h-8.71v81.21h8.71v-34.6h49.43v34.6h8.71V40.04z"/>
+      </g>
+    </svg>
+  );
+}
+
+function Badge({ color, tx, br, children }) {
+  return <span style={{display:"inline-flex",alignItems:"center",gap:4,background:color,color:tx,border:`0.5px solid ${br}`,borderRadius:6,padding:"2px 9px",fontSize:12,fontWeight:500}}>{children}</span>;
+}
+function PriorityBadge({ priority }) {
+  const m = PRIORITY_META[priority] || PRIORITY_META["Medium"];
+  return <Badge color={m.color} tx={m.tx} br={m.br}>{m.dot} {priority}</Badge>;
+}
+function CatBadge({ category }) {
+  const m = CAT_META[category] || { label:category||"Support", color:"#F1EFE8", tx:"#5F5E5A", br:"#B4B2A9" };
+  return <Badge color={m.color} tx={m.tx} br={m.br}>{m.label}</Badge>;
+}
+function Spinner({ size=18, color="#008624" }) {
+  return <span style={{display:"inline-block",width:size,height:size,border:`2.5px solid var(--color-border-tertiary)`,borderTopColor:color,borderRadius:"50%",animation:"hspin .75s linear infinite",flexShrink:0}} />;
+}
+function CriticalAlertIcon({ size=28 }) {
+  return (
+    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:size,height:size,borderRadius:size/2,background:"#FFFFFF",flexShrink:0}}>
+      <span style={{fontFamily:"Arial,Helvetica,sans-serif",fontSize:Math.round(size*0.64),lineHeight:`${size}px`,fontWeight:800,color:"#B42318"}}>!</span>
+    </span>
+  );
+}
+function FieldRow({ label, value, editable, onChange, mono }) {
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"160px 1fr",gap:8,alignItems:"start",padding:"7px 0",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
+      <span style={{fontSize:12,color:"var(--color-text-secondary)",paddingTop:editable?7:2,fontWeight:500}}>{label}</span>
+      {editable
+        ? <input value={value||""} onChange={e=>onChange(e.target.value)} style={{fontSize:13,padding:"4px 8px",borderRadius:6,border:"0.5px solid var(--color-border-secondary)",background:"var(--color-background-secondary)",color:"var(--color-text-primary)",width:"100%",boxSizing:"border-box",fontFamily:mono?"var(--font-mono)":"var(--font-sans)"}} />
+        : <span style={{fontSize:13,color:"var(--color-text-primary)",lineHeight:1.5,fontFamily:mono?"var(--font-mono)":"inherit"}}>{value||<span style={{color:"var(--color-text-tertiary)",fontStyle:"italic"}}>Niet gedetecteerd</span>}</span>
+      }
+    </div>
+  );
+}
+
+function AppHeader() {
+  return (
+    <div style={{background:"var(--color-background-primary)",borderBottom:"0.5px solid var(--color-border-tertiary)",flexShrink:0}}>
+      <div style={{height:4,background:"linear-gradient(90deg,#8c84e3,#6b63c9)"}} />
+      <div style={{padding:"10px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"baseline",gap:7}}>
+          <HealisLogo width={110} />
+          <span style={{fontSize:13,fontWeight:500,color:"#8c84e3",letterSpacing:"-0.2px"}}>Assist</span>
+        </div>
+        <span style={{fontSize:11,color:"var(--color-text-tertiary)",fontWeight:500}}>Apotheek Support · Jira</span>
+      </div>
+    </div>
+  );
+}
+
+function AppFooter() {
+  return (
+    <footer style={{background:"#2a2a2a",color:"#aaa",padding:"18px 24px",flexShrink:0}}>
+      <div style={{maxWidth:900,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 162 162" width={22} height={22} aria-hidden>
+            <path fill="#008624" d="M0 71h61V81H0zM72 92h10v61H72zM72 0h10v61H72z"/>
+            <path fill="#8c84e3" d="M92 72h61v10H92z"/>
+          </svg>
+          <span style={{fontSize:12,color:"#ccc",fontWeight:500}}>Healis Assist</span>
+        </div>
+        <div style={{fontSize:11,color:"#888"}}>
+          Intern gebruik · Apotheekmedewerkers · Alle meldingen worden als Jira ticket geregistreerd
+        </div>
+        <div style={{fontSize:11,color:"#666"}}>© {new Date().getFullYear()} Healis</div>
+      </div>
+    </footer>
+  );
+}
+
+// ── JIRA FIELD MAPPING ────────────────────────────────────────────────────────
+function getSubcategoryDisplay(d) {
+  switch (d.category) {
+    case "IT":           return ["IT Categorie",     IT_CATEGORIE_MAP[d.subcategory_it]            || d.subcategory_it];
+    case "Gebouwbeheer": return ["Type Probleem",    GEBOUW_TYPE_MAP[d.subcategory_gebouw]          || d.subcategory_gebouw];
+    case "Apotheek":     return ["Type Inrichting",  APOTHEEK_TYPE_MAP[d.subcategory_apotheek]      || d.subcategory_apotheek];
+    case "HR_Medewerker":return ["Thema",            HR_MEDEWERKER_MAP[d.subcategory_hr_medewerker] || d.subcategory_hr_medewerker];
+    case "HR_Planning":  return ["Thema",            HR_PLANNING_MAP[d.subcategory_hr_planning]     || d.subcategory_hr_planning];
+    case "Klacht":       return ["Categorie Klacht", KLACHT_MAP[d.subcategory_klacht]               || d.subcategory_klacht];
+    default: return null;
+  }
+}
+
+function buildJiraFields(d, p, inputText) {
+  const pharmaOption = p ? JIRA_APOTHEEK_MAP[p.alias] : null;
+  const alias = p ? p.alias : (d.alias_hint || "");
+  const pharmaLabel = p ? `${p.alias} - ${p.name}` : (d.apotheek_hint || "Onbekende apotheek");
+  const summary = `[${alias || "?"}] ${d.summary || "Support issue"}`.substring(0, 255);
+
+  const mkPara = t => ({ type:"paragraph", content:[{ type:"text", text:String(t) }] });
+  const mkHeading = (t, level=3) => ({ type:"heading", attrs:{ level }, content:[{ type:"text", text:t }] });
+  const subDisplay = getSubcategoryDisplay(d);
+  const description = {
+    type:"doc", version:1,
+    content:[
+      mkHeading("📍 Apotheek"),
+      mkPara(`${pharmaLabel}${p ? ` | APB: ${p.apb}` : ""}`),
+      ...(p ? [mkPara(`${p.city} | ${p.province}`), mkPara(`Tel: ${p.phone} | ${p.email}`)] : []),
+      ...(d.priority==="Business Critical" ? [mkHeading("🚨 Business Critical"), mkPara("Directe interventie vereist.")] : []),
+      mkHeading("📋 Classificatie"),
+      mkPara(`Categorie: ${CAT_META[d.category]?.label || d.category || "Support"}`),
+      ...(subDisplay ? [mkPara(`${subDisplay[0]}: ${subDisplay[1]}`)] : []),
+      ...(d.werknemer_naam ? [mkPara(`Medewerker: ${d.werknemer_naam}`)] : []),
+      mkHeading("🔍 Beschrijving"),
+      mkPara(d.symptomen || "Zie originele melding"),
+      ...(d.foutcode ? [mkPara(`Foutcode: ${d.foutcode}`)] : []),
+      mkHeading("✅ Gewenste actie"),
+      mkPara(d.gewenste_actie || "Zie beschrijving"),
+      mkHeading("📝 Originele melding"),
+      mkPara(inputText),
+      mkPara(`Healis AI · ${new Date().toLocaleString("nl-BE")} · confidence ${d.confidence != null ? Math.round(d.confidence*100)+"%" : "n/a"}`),
+    ]
+  };
+
+  const base = {
+    summary, description,
+    priority: { name: d.priority || "Medium" },
+    ...(pharmaOption ? { customfield_10107: { value: pharmaOption } } : {}),
+  };
+
+  switch (d.category) {
+    case "IT":
+      return { project:{key:"IT"}, issuetype:{name:"Support"}, ...base,
+        ...(d.subcategory_it && IT_CATEGORIE_MAP[d.subcategory_it] ? { customfield_10109:{ value:IT_CATEGORIE_MAP[d.subcategory_it] } } : {}) };
+    case "Gebouwbeheer":
+      return { project:{key:"FAM"}, issuetype:{name:"Incident"}, ...base,
+        ...(d.subcategory_gebouw && GEBOUW_TYPE_MAP[d.subcategory_gebouw] ? { customfield_10177:{ value:GEBOUW_TYPE_MAP[d.subcategory_gebouw] } } : {}) };
+    case "Apotheek":
+      return { project:{key:"FAM"}, issuetype:{name:"Service Request"}, ...base,
+        ...(d.subcategory_apotheek && APOTHEEK_TYPE_MAP[d.subcategory_apotheek] ? { customfield_10178:{ value:APOTHEEK_TYPE_MAP[d.subcategory_apotheek] } } : {}) };
+    case "HR_Medewerker":
+      return { project:{key:"HR"}, issuetype:{name:"Issue"}, ...base,
+        ...(d.werknemer_naam ? { customfield_10143:d.werknemer_naam } : {}),
+        ...(d.subcategory_hr_medewerker && HR_MEDEWERKER_MAP[d.subcategory_hr_medewerker] ? { customfield_10180:{ value:HR_MEDEWERKER_MAP[d.subcategory_hr_medewerker] } } : {}) };
+    case "HR_Planning":
+      return { project:{key:"HR"}, issuetype:{name:"Issue"}, ...base,
+        ...(d.werknemer_naam ? { customfield_10143:d.werknemer_naam } : {}),
+        ...(d.subcategory_hr_planning && HR_PLANNING_MAP[d.subcategory_hr_planning] ? { customfield_10179:{ value:HR_PLANNING_MAP[d.subcategory_hr_planning] } } : {}) };
+    case "Klacht":
+      return { project:{key:"OPS"}, issuetype:{name:"Task"}, ...base,
+        ...(d.subcategory_klacht && KLACHT_MAP[d.subcategory_klacht] ? { customfield_10181:{ value:KLACHT_MAP[d.subcategory_klacht] } } : {}) };
+    default:
+      return { project:{key:"FAM"}, issuetype:{name:"Support"}, ...base };
+  }
+}
+
+// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
+export default function HealisApp() {
+  const [stage,           setStage]           = useState(STAGE.SELECT);
+  const [pickSearch,      setPickSearch]      = useState("");
+  const [pickSelected,    setPickSelected]    = useState(null);   // pharmacy on select screen
+  const [inputText,       setInputText]       = useState("");
+  const [processingMsg,   setProcessingMsg]   = useState("");
+  const [ticketDrafts,    setTicketDrafts]    = useState([]);
+  const [matchedPharmacy, setMatchedPharmacy] = useState(null);
+  const [createdTickets,  setCreatedTickets]  = useState([]);
+  const [appError,        setAppError]        = useState(null);
+  const [editModes,       setEditModes]       = useState({});
+  const [pharmSearch,     setPharmSearch]     = useState("");
+  const [showPicker,      setShowPicker]      = useState(false);
+  const [showTips,        setShowTips]        = useState(false);
+  const [recSeconds,      setRecSeconds]      = useState(0);
+
+  const srRef    = useRef(null);
+  const timerRef = useRef(null);
+
+  useEffect(() => () => { clearInterval(timerRef.current); srRef.current?.stop(); }, []);
+
+  const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+
+  // ── RECORDING ────────────────────────────────────────────────────────────────
+  const startRecording = useCallback(() => {
+    setAppError(null);
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setAppError("Spraakherkenning niet ondersteund. Gebruik Chrome."); return; }
+    const sr = new SR();
+    sr.lang = "nl-BE"; sr.continuous = true; sr.interimResults = false;
+    sr.onresult = e => {
+      let chunk = "";
+      for (let i = e.resultIndex; i < e.results.length; i++)
+        if (e.results[i].isFinal) chunk += e.results[i][0].transcript + " ";
+      if (chunk) setInputText(prev => prev ? `${prev}${chunk}` : chunk);
+    };
+    sr.onerror = e => {
+      if (e.error === "not-allowed") setAppError("Microfoon geweigerd. Sta toegang toe via het slotje in de adresbalk.");
+      else if (e.error !== "aborted") setAppError(`Spraakherkenning fout: ${e.error}`);
+      clearInterval(timerRef.current); setStage(STAGE.IDLE);
+    };
+    sr.onend = () => { clearInterval(timerRef.current); setStage(s => s === STAGE.RECORDING ? STAGE.IDLE : s); };
+    sr.start(); srRef.current = sr;
+    setRecSeconds(0); setStage(STAGE.RECORDING);
+    timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    clearInterval(timerRef.current); srRef.current?.stop(); srRef.current = null; setStage(STAGE.IDLE);
+  }, []);
+
+  // ── AI EXTRACTION ─────────────────────────────────────────────────────────
+  const processIssue = useCallback(async () => {
+    if (!inputText.trim()) return;
+    setStage(STAGE.PROCESSING); setAppError(null);
+    setProcessingMsg("Claude analyseert uw melding…");
+    try {
+      const res = await fetch("/api/anthropic/v1/messages", {
+        method:"POST", headers:API_HEADERS,
+        body: JSON.stringify({
+          model:"claude-sonnet-4-6", max_tokens:1800,
+          system:`Je bent Healis AI Support. Extraheer gestructureerde ticketdata uit een melding van een apothekersmedewerker.
+Retourneer een JSON-array met 1 of meer ticketobjecten. Maak meerdere aparte tickets wanneer de melding duidelijk meerdere afzonderlijke problemen beschrijft die naar verschillende departementen gaan (bijv. een IT-probleem ÉN een Facility-probleem). Normaal gezien is dit 1 ticket.
+Antwoord ALLEEN met een geldige JSON-array — geen markdown, geen uitleg. Dus altijd: [{...}] of [{...},{...}]
+
+Categorieën (kies 1 per ticket):
+- "IT": Wi-Fi/netwerk, PC/scanner/kassa/betaalterminal, printer/labelprinter, login/account, software/apps
+- "Gebouwbeheer": deuren/sloten/badges/rolluiken, elektriciteit/zekeringen, verwarming/airco, water/lekkage/geur, alarm/camera/noodverlichting, schoonmaak/verlichting/ramen
+- "Apotheek": toonbank/kasten/schappen, stoelen/tafels/consultruimte, koelmeubels/koelkasten, signalisatie/displays/etalageframes, rekken/trolleys, labomateriaal/weegschalen/mortieren, bureaumateriaal/papier/toner/leveranciers
+- "HR_Medewerker": onboarding/offboarding, loon/attesten/correcties, verlof/ziekte/afwezigheid, opleiding/certificaten, welzijn/conflict
+- "HR_Planning": bezetting/planning, vacatures/vervanging, teamafspraken/samenwerking, evaluaties/feedback, escalaties/personeelsdossiers
+- "Klacht": klacht van KLANT over service/wachttijd, medicatie/advies, prijs/terugbetaling, voorraad/bestelling, privacy/administratie
+
+Prioriteiten:
+- "Business Critical": apotheek volledig geblokkeerd, patiëntveiligheid in gevaar, alle medewerkers getroffen, koeling kritiek, betalingsproblemen (betaalterminal, kassa, pinnen werkt niet, betalingen falen)
+- "High": grote verstoring, meerdere medewerkers getroffen, geen workaround
+- "Medium": workaround beschikbaar, beperkte impact
+- "Low": kleine hinder
+- "Lowest": informatief
+
+{
+  "summary": "max 80 tekens, in het Nederlands",
+  "category": "IT|Gebouwbeheer|Apotheek|HR_Medewerker|HR_Planning|Klacht",
+  "subcategory_it": "Internet|Software|Hardware|Account|Andere",
+  "subcategory_gebouw": "Deuren|Elektriciteit|Verwarming|Water|Alarm|Schoonmaak|Andere",
+  "subcategory_apotheek": "Toonbank|Stoelen|Koelmeubels|Signalisatie|Rekken|Labomateriaal|Bureaumateriaal|Andere",
+  "subcategory_hr_medewerker": "Onboarding|Loon|Verlof|Opleiding|Welzijn|Andere",
+  "subcategory_hr_planning": "Bezetting|Vacatures|Teamafspraken|Evaluaties|Escalaties|Andere",
+  "subcategory_klacht": "Service|Medicatie|Prijs|Voorraad|Privacy|Andere",
+  "priority": "Business Critical|High|Medium|Low|Lowest",
+  "apotheek_hint": "apotheeknaam, stad of alias of null",
+  "alias_hint": "3-letter alias bv. AAA of null",
+  "werknemer_naam": "naam van de medewerker voor HR-tickets of null",
+  "foutcode": "foutcode of null",
+  "symptomen": "korte beschrijving symptomen",
+  "gewenste_actie": "gevraagde actie",
+  "confidence": 0.0
+}`,
+          messages:[{ role:"user", content:inputText }]
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      let extracted;
+      try {
+        const raw = (data.content?.[0]?.text || "[]").replace(/```json|```/g,"").trim();
+        const parsed = JSON.parse(raw);
+        extracted = Array.isArray(parsed) ? parsed : [parsed];
+        // Payment issues are always Business Critical
+        const PAYMENT_RE = /betaal|betaling|pin(nen)?|kassa|terminal|payment/i;
+        extracted = extracted.map(d =>
+          PAYMENT_RE.test((d.summary || '') + ' ' + (d.description || ''))
+            ? { ...d, priority: 'Business Critical' }
+            : d
+        );
+      } catch { throw new Error("AI parsing mislukt. Probeer opnieuw."); }
+      await new Promise(r => setTimeout(r, 200));
+      // Prefer the pre-selected pharmacy; otherwise detect from text
+      const detected = matchPharmacy(extracted[0]?.alias_hint || extracted[0]?.apotheek_hint || inputText);
+      setMatchedPharmacy(matchedPharmacy || detected);
+      setTicketDrafts(extracted);
+      setEditModes({});
+      setStage(STAGE.REVIEW);
+    } catch(err) { setAppError(err.message); setStage(STAGE.IDLE); }
+  }, [inputText, matchedPharmacy]);
+
+  // ── JIRA CREATION ─────────────────────────────────────────────────────────
+  const createTickets = useCallback(async () => {
+    setStage(STAGE.CREATING);
+    const results = [];
+    try {
+      for (const draft of ticketDrafts) {
+        const fields = buildJiraFields(draft, matchedPharmacy, inputText);
+        const res = await fetch("/api/jira/rest/api/3/issue", {
+          method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.errorMessages?.[0] || JSON.stringify(data.errors) || `HTTP ${res.status}`);
+        results.push({ key:data.key, url:`https://healis.atlassian.net/browse/${data.key}`, summary:fields.summary, project:fields.project.key, issueType:fields.issuetype.name, priority:draft.priority, category:draft.category });
+      }
+      setCreatedTickets(results);
+      setStage(STAGE.DONE);
+    } catch(err) { setAppError("Jira fout: " + err.message); setStage(STAGE.REVIEW); }
+  }, [ticketDrafts, matchedPharmacy, inputText]);
+
+  const reset = () => {
+    setStage(STAGE.SELECT); setInputText(""); setTicketDrafts([]);
+    setMatchedPharmacy(null); setCreatedTickets([]); setAppError(null);
+    setEditModes({}); setShowPicker(false); setPharmSearch("");
+    setPickSearch(""); setPickSelected(null);
+  };
+
+  const confirmPharmacySelection = () => {
+    setMatchedPharmacy(pickSelected);  // may be null (anonymous)
+    setStage(STAGE.IDLE);
+  };
+
+  const filteredPick = PHARMACIES.filter(p =>
+    !pickSearch || `${p.alias} ${p.name} ${p.city}`.toLowerCase().includes(pickSearch.toLowerCase())
+  );
+  const filteredPharma = PHARMACIES.filter(p =>
+    !pharmSearch || `${p.alias} ${p.name} ${p.city}`.toLowerCase().includes(pharmSearch.toLowerCase())
+  );
+  const busy = [STAGE.RECORDING, STAGE.PROCESSING, STAGE.CREATING].includes(stage);
+  const isBC = ticketDrafts.some(d => d.priority === "Business Critical");
+
+  return (
+    <div style={{fontFamily:"var(--font-sans)",background:"var(--color-background-tertiary)",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+      <style>{`
+        @keyframes hfade{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+        @keyframes hspin{to{transform:rotate(360deg)}}
+        @keyframes hrecblink{0%,100%{opacity:1}50%{opacity:.3}}
+        @keyframes hrecpulse{0%,100%{box-shadow:0 0 0 0 rgba(163,45,45,.5)}70%{box-shadow:0 0 0 14px rgba(163,45,45,0)}}
+        .hfade{animation:hfade .25s ease forwards}
+        .hcard{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1.3rem}
+        .hbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);font-size:13px;font-weight:500;cursor:pointer;transition:background .12s,transform .1s;font-family:var(--font-sans)}
+        .hbtn:hover:not(:disabled){background:var(--color-background-secondary)}
+        .hbtn:active:not(:disabled){transform:scale(.97)}
+        .hbtn:disabled{opacity:.4;cursor:not-allowed}
+        .hbtn-primary{background:#008624;color:#fff;border-color:#008624}
+        .hbtn-primary:hover:not(:disabled){background:#006B1D}
+        .hbtn-success{background:#008624;color:#fff;border-color:#008624}
+        .hbtn-success:hover:not(:disabled){background:#006B1D}
+        .hbtn-rec{background:#FCEBEB;color:#A32D2D;border-color:#F09595}
+        .hbtn-rec:hover:not(:disabled){background:#f8d8d8}
+        .hbtn-rec-active{background:#F7C1C1;color:#A32D2D;border-color:#E08080;animation:hrecpulse 1.4s ease-in-out infinite}
+        .hrecdot{width:9px;height:9px;border-radius:50%;background:#A32D2D;animation:hrecblink 1s ease-in-out infinite;flex-shrink:0}
+        .pharm-card{background:var(--color-background-primary);border:1.5px solid var(--color-border-tertiary);border-radius:10px;padding:11px 13px;cursor:pointer;transition:border-color .13s,background .13s}
+        .pharm-card:hover{border-color:#7AC483;background:#f8fdf8}
+        .pharm-card.selected{border-color:#008624;background:#E8F5EC}
+      `}</style>
+
+      <AppHeader />
+
+      <main style={{flex:1}}>
+
+        {/* ── PHARMACY SELECT SCREEN ── */}
+        {stage === STAGE.SELECT && (
+          <div className="hfade" style={{maxWidth:860,margin:"0 auto",padding:"28px 16px 32px"}}>
+            <div style={{textAlign:"center",marginBottom:24}}>
+              <div style={{fontSize:21,fontWeight:700,marginBottom:6}}>Selecteer uw apotheek</div>
+              <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
+                Kies uw apotheek zodat we uw melding automatisch kunnen koppelen.
+              </div>
+            </div>
+
+            {/* Search */}
+            <div style={{position:"relative",marginBottom:16}}>
+              <svg style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input
+                placeholder="Zoek op naam, alias of stad…"
+                value={pickSearch}
+                onChange={e => setPickSearch(e.target.value)}
+                autoFocus
+                style={{width:"100%",boxSizing:"border-box",padding:"10px 12px 10px 34px",fontSize:14,borderRadius:9,border:"0.5px solid var(--color-border-secondary)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",fontFamily:"var(--font-sans)"}}
+              />
+            </div>
+
+            {/* Pharmacy grid */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:8,marginBottom:20,maxHeight:"38vh",overflowY:"auto",paddingRight:2}}>
+              {filteredPick.map(p => (
+                <div
+                  key={p.alias}
+                  className={`pharm-card${pickSelected?.alias === p.alias ? " selected" : ""}`}
+                  onClick={() => setPickSelected(prev => prev?.alias === p.alias ? null : p)}
+                >
+                  <div style={{display:"flex",alignItems:"baseline",gap:7,marginBottom:3}}>
+                    <span style={{fontSize:15,fontWeight:700,color:"#008624",fontFamily:"var(--font-mono)"}}>{p.alias}</span>
+                    {pickSelected?.alias === p.alias && <span style={{fontSize:11,color:"#008624"}}>✓ Geselecteerd</span>}
+                  </div>
+                  <div style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)",lineHeight:1.3}}>{p.name.replace(/^(Apotheek|Pharmacie)\s/,"")}</div>
+                  <div style={{fontSize:11,color:"var(--color-text-tertiary)",marginTop:2}}>{p.city}</div>
+                </div>
+              ))}
+              {filteredPick.length === 0 && (
+                <div style={{gridColumn:"1/-1",textAlign:"center",padding:"32px 0",color:"var(--color-text-tertiary)",fontSize:13}}>
+                  Geen apotheken gevonden voor "{pickSearch}"
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div style={{display:"flex",flexDirection:"column",gap:10,alignItems:"center"}}>
+              <button
+                className="hbtn hbtn-primary"
+                style={{width:"100%",maxWidth:400,justifyContent:"center",padding:"12px 0",fontSize:15,fontWeight:600}}
+                onClick={confirmPharmacySelection}
+                disabled={!pickSelected}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {pickSelected ? `Doorgaan met ${pickSelected.alias} — ${pickSelected.name.replace(/^(Apotheek|Pharmacie)\s/,"")}` : "Selecteer een apotheek"}
+              </button>
+
+              <button
+                className="hbtn"
+                style={{fontSize:12,color:"var(--color-text-tertiary)",border:"none",background:"transparent",padding:"4px 0"}}
+                onClick={confirmPharmacySelection}  // matchedPharmacy stays null
+              >
+                Doorgaan zonder apotheek te selecteren
+                <span style={{fontSize:11,color:"var(--color-text-tertiary)",marginLeft:4}}>(bijv. voor een discrete melding)</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── MELD EEN PROBLEEM (IDLE / RECORDING / PROCESSING) ── */}
+        {[STAGE.IDLE, STAGE.RECORDING, STAGE.PROCESSING].includes(stage) && (
+          <div className="hfade" style={{maxWidth:680,margin:"0 auto",padding:"28px 16px"}}>
+            <div style={{textAlign:"center",marginBottom:22}}>
+              {matchedPharmacy && (
+                <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"#E8F5EC",border:"0.5px solid #7AC483",borderRadius:20,padding:"4px 12px",fontSize:12,color:"#008624",fontWeight:500,marginBottom:10}}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  {matchedPharmacy.alias} — {matchedPharmacy.name}
+                  <button onClick={()=>setMatchedPharmacy(null)} style={{background:"none",border:"none",cursor:"pointer",color:"#008624",padding:0,fontSize:13,lineHeight:1,marginLeft:2}}>×</button>
+                </div>
+              )}
+              <div style={{fontSize:21,fontWeight:700,marginBottom:5}}>Meld een Probleem</div>
+              <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
+                Beschrijf uw probleem via stem of tekst — Claude AI routeert automatisch naar het juiste Jira project.
+              </div>
+            </div>
+
+            <div className="hcard" style={{marginBottom:12}}>
+              {stage === STAGE.RECORDING && (
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 14px",background:"#FCEBEB",borderRadius:8,border:"0.5px solid #F09595"}}>
+                  <span className="hrecdot" />
+                  <span style={{fontSize:13,fontWeight:600,color:"#A32D2D"}}>Opname bezig — {fmtTime(recSeconds)}</span>
+                  <span style={{fontSize:12,color:"#791F1F",marginLeft:"auto"}}>Spreek uw probleem in</span>
+                </div>
+              )}
+              {stage === STAGE.PROCESSING && (
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 14px",background:"var(--color-background-secondary)",borderRadius:8,border:"0.5px solid var(--color-border-tertiary)"}}>
+                  <Spinner size={15} /><span style={{fontSize:13,color:"var(--color-text-secondary)"}}>{processingMsg}</span>
+                </div>
+              )}
+
+              <textarea
+                value={inputText} onChange={e => setInputText(e.target.value)}
+                placeholder="Bijv: De koelkast in de stockageruimte geeft een alarm. Temperatuur te hoog voor medicijnen."
+                rows={4} disabled={busy}
+                style={{width:"100%",boxSizing:"border-box",resize:"vertical",padding:"10px 13px",lineHeight:1.65,minHeight:100,background:"var(--color-background-secondary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:8,color:"var(--color-text-primary)",fontFamily:"var(--font-sans)",fontSize:13.5,opacity:busy?0.6:1}}
+              />
+
+              {/* Inspreken + Optimaliseer row */}
+              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14}}>
+                {/* Inspreken — secondary pill */}
+                <button
+                  className={stage === STAGE.RECORDING ? "hbtn hbtn-rec-active" : "hbtn hbtn-rec"}
+                  style={{padding:"9px 20px",fontSize:13,fontWeight:600,borderRadius:50,gap:7,flexShrink:0}}
+                  onClick={stage === STAGE.RECORDING ? stopRecording : startRecording}
+                  disabled={stage === STAGE.PROCESSING}
+                >
+                  {stage === STAGE.RECORDING ? (
+                    <><svg width="13" height="13" viewBox="0 0 24 24" fill="#A32D2D"><rect x="4" y="4" width="16" height="16" rx="2.5"/></svg>Stop</>
+                  ) : (
+                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Inspreken</>
+                  )}
+                </button>
+
+                {/* Divider */}
+                <div style={{width:1,height:28,background:"var(--color-border-secondary)",flexShrink:0}} />
+
+                {/* Optimaliseer met AI — primary, grows to fill */}
+                <button className="hbtn hbtn-primary"
+                  style={{flex:1,justifyContent:"center",padding:"9px 16px",fontSize:13,fontWeight:600}}
+                  onClick={processIssue} disabled={!inputText.trim()||busy}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6l-5 3.6 1.9-5.8L4 8.8h6.1z"/>
+                  </svg>
+                  Optimaliseer met AI
+                </button>
+              </div>
+              <div style={{textAlign:"center",fontSize:11,color:"var(--color-text-tertiary)",marginTop:8}}>
+                AI structureert uw melding — u krijgt nog de kans om te controleren en aan te passen vóór het aanmaken
+              </div>
+            </div>
+
+            {appError && <div style={{background:"#FCEBEB",border:"0.5px solid #F09595",borderRadius:8,padding:"9px 14px",color:"#A32D2D",fontSize:13,marginBottom:10}}>⚠ {appError}</div>}
+
+            <button className="hbtn" style={{fontSize:12,color:"var(--color-text-tertiary)",border:"none",background:"transparent",padding:"4px 0"}}
+              onClick={() => setStage(STAGE.SELECT)}>
+              ← Terug naar apotheekselectie
+            </button>
+
+            {/* Tips & tricks collapsible */}
+            <div style={{marginTop:16,borderRadius:9,border:"0.5px solid var(--color-border-secondary)",overflow:"hidden"}}>
+              <button
+                onClick={()=>setShowTips(t=>!t)}
+                style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"var(--color-background-secondary)",border:"none",cursor:"pointer",textAlign:"left",gap:8}}
+              >
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span style={{fontSize:12.5,fontWeight:600,color:"var(--color-text-secondary)"}}>Tips voor een vlotte afhandeling</span>
+                </div>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" style={{transform:showTips?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {showTips && (
+                <div style={{padding:"12px 14px 14px",background:"var(--color-background-primary)",borderTop:"0.5px solid var(--color-border-secondary)",display:"flex",flexDirection:"column",gap:9}}>
+                  {[
+                    { icon:"👤", title:"Vermeld uzelf", text:'Begin met uw naam en functie \u2014 bijv. "Ik ben Sarah, apothekersassistente." Zo weten we wie we moeten contacteren voor opvolging.' },
+                    { icon:"📍", title:"Geef de locatie aan", text:'Zeg waar het probleem zich bevindt \u2014 "in de stockageruimte", "aan de toonbank", "bij de ingang". Hoe concreter, hoe sneller we kunnen ingrijpen.' },
+                    { icon:"🔍", title:"Wees specifiek", text:'Beschrijf wat er precies misgaat: foutmeldingen, symptomen, hoe lang al, of het alle medewerkers treft. Meer detail = snellere oplossing.' },
+                    { icon:"🚨", title:"Geef urgentie aan", text:'Als de apotheek geblokkeerd is, de koeling faalt of betalingen niet werken \u2014 zeg dit expliciet. Het systeem markeert dit automatisch als Business Critical.' },
+                    { icon:"📋", title:"Meerdere problemen? Geen probleem", text:'U kunt in één opname meerdere issues melden \u2014 bijv. een IT-probleem én een facilitaire kwestie. Claude maakt automatisch aparte tickets aan.' },
+                  ].map(({icon,title,text})=>(
+                    <div key={title} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+                      <span style={{fontSize:16,flexShrink:0,lineHeight:"20px"}}>{icon}</span>
+                      <div>
+                        <div style={{fontSize:12.5,fontWeight:700,color:"var(--color-text-primary)",marginBottom:1}}>{title}</div>
+                        <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.55}}>{text}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{marginTop:4,padding:"9px 12px",background:"#EFF6FF",borderRadius:7,border:"0.5px solid #BFDBFE"}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"#1D4ED8",marginBottom:2}}>💡 Voorbeeld van een goede melding</div>
+                    <div style={{fontSize:12,color:"#1E40AF",fontStyle:"italic",lineHeight:1.6}}>"Ik ben Lien, apotheker in Aalst. Onze betaalterminal werkt niet meer — klanten kunnen niet betalen. Dit speelt al 20 minuten. Daarnaast is de tl-lamp boven de toonbank kapot."</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── REVIEW ── */}
+        {stage === STAGE.REVIEW && ticketDrafts.length > 0 && (
+          <div className="hfade" style={{maxWidth:680,margin:"0 auto",padding:"28px 16px"}}>
+            {isBC && (
+              <div style={{background:"#B42318",color:"#fff",borderRadius:9,padding:"11px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+                <CriticalAlertIcon size={28} />
+                <div>
+                  <div style={{fontSize:14,fontWeight:800,fontFamily:"Arial,Helvetica,sans-serif"}}>Business Critical support request</div>
+                  <div style={{fontSize:12,fontWeight:400,color:"#FFE4E8",marginTop:2}}>Directe interventie vereist — ticket krijgt hoogste prioriteit</div>
+                </div>
+              </div>
+            )}
+
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:600}}>
+                  Controleer en bevestig
+                  {ticketDrafts.length > 1 && <span style={{marginLeft:7,fontSize:12,color:"var(--color-text-secondary)",fontWeight:400}}>({ticketDrafts.length} tickets gedetecteerd)</span>}
+                </div>
+                <div style={{fontSize:12,color:"var(--color-text-secondary)",marginTop:2}}>Claude heeft uw melding geanalyseerd</div>
+              </div>
+            </div>
+
+            {/* Pharmacy — shared across all drafts */}
+            <div className="hcard" style={{marginBottom:12,border:matchedPharmacy?"0.5px solid #7AC483":"0.5px solid #FAC775"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:matchedPharmacy&&!showPicker?8:0}}>
+                <div style={{fontSize:12,fontWeight:600,color:matchedPharmacy?"#008624":"#854F0B"}}>
+                  {matchedPharmacy ? "✓ Apotheek gevonden" : "⚠ Apotheek niet herkend"}
+                </div>
+                <button className="hbtn" style={{fontSize:11,padding:"3px 9px"}} onClick={()=>setShowPicker(s=>!s)}>
+                  {showPicker ? "Sluiten" : "Wijzig apotheek"}
+                </button>
+              </div>
+              {matchedPharmacy && !showPicker && (
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:3}}>
+                  {[["Code",`${matchedPharmacy.alias} - ${matchedPharmacy.name}`],["APB",matchedPharmacy.apb],["Stad",matchedPharmacy.city],["Provincie",matchedPharmacy.province],["Tel",matchedPharmacy.phone],["E-mail",matchedPharmacy.email]].map(([l,v])=>(
+                    <div key={l} style={{fontSize:12}}><span style={{color:"var(--color-text-secondary)"}}>{l}: </span><span style={{fontWeight:500}}>{v}</span></div>
+                  ))}
+                </div>
+              )}
+              {showPicker && (
+                <div style={{marginTop:8}}>
+                  <input autoFocus placeholder="Zoek apotheek…" value={pharmSearch} onChange={e=>setPharmSearch(e.target.value)}
+                    style={{width:"100%",boxSizing:"border-box",fontSize:12,padding:"5px 10px",borderRadius:6,border:"0.5px solid var(--color-border-secondary)",background:"var(--color-background-secondary)",color:"var(--color-text-primary)",fontFamily:"var(--font-sans)",marginBottom:6}} />
+                  <div style={{maxHeight:160,overflowY:"auto",display:"flex",flexDirection:"column",gap:3}}>
+                    {filteredPharma.map(p=>(
+                      <div key={p.alias} onClick={()=>{setMatchedPharmacy(p);setShowPicker(false);setPharmSearch("");}}
+                        style={{fontSize:12,padding:"6px 9px",borderRadius:6,cursor:"pointer",background:matchedPharmacy?.alias===p.alias?"#E8F5EC":"var(--color-background-secondary)",color:"var(--color-text-primary)"}}>
+                        <strong>{p.alias}</strong> — {p.name} <span style={{color:"var(--color-text-secondary)"}}>({p.city})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* One card per draft */}
+            {ticketDrafts.map((draft, idx) => {
+              const editOn = !!editModes[idx];
+              const setDraft = updater => setTicketDrafts(prev => prev.map((d,i) => i===idx ? updater(d) : d));
+              const sub = getSubcategoryDisplay(draft);
+              return (
+                <div key={idx} className="hcard" style={{marginBottom:10,borderTop:`3px solid ${CAT_META[draft.category]?.br||"#ccc"}`}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      {ticketDrafts.length > 1 && <span style={{fontSize:11,color:"var(--color-text-tertiary)",fontWeight:500}}>Ticket {idx+1}/{ticketDrafts.length}</span>}
+                      <PriorityBadge priority={draft.priority} />
+                      <CatBadge category={draft.category} />
+                    </div>
+                    <button className="hbtn" style={{fontSize:11,padding:"3px 9px"}} onClick={()=>setEditModes(m=>({...m,[idx]:!m[idx]}))}>
+                      {editOn ? "✓ Klaar" : "✏ Bewerken"}
+                    </button>
+                  </div>
+                  <div style={{background:"#E8F5EC",border:"0.5px solid #7AC483",borderRadius:7,padding:"8px 12px",marginBottom:9}}>
+                    <div style={{fontSize:11,color:"#008624",fontWeight:600,marginBottom:2}}>SAMENVATTING</div>
+                    <div style={{fontSize:13,color:"#1A3D22",fontWeight:500}}>{draft.summary}</div>
+                  </div>
+                  <FieldRow label="Project"    value={CAT_META[draft.category]?.project || draft.category} mono />
+                  <FieldRow label="Issue type" value={CAT_META[draft.category]?.issueType || "Support"} />
+                  <FieldRow label="Prioriteit" value={draft.priority} editable={editOn} onChange={v=>setDraft(d=>({...d,priority:v}))} />
+                  {sub && <FieldRow label={sub[0]} value={sub[1]} />}
+                  {(draft.category==="HR_Medewerker"||draft.category==="HR_Planning") && draft.werknemer_naam && (
+                    <FieldRow label="Medewerker" value={draft.werknemer_naam} editable={editOn} onChange={v=>setDraft(d=>({...d,werknemer_naam:v}))} />
+                  )}
+                  <FieldRow label="Foutcode"  value={draft.foutcode}       editable={editOn} onChange={v=>setDraft(d=>({...d,foutcode:v}))}       mono />
+                  <FieldRow label="Symptomen" value={draft.symptomen}      editable={editOn} onChange={v=>setDraft(d=>({...d,symptomen:v}))} />
+                  <FieldRow label="Actie"     value={draft.gewenste_actie} editable={editOn} onChange={v=>setDraft(d=>({...d,gewenste_actie:v}))} />
+                  {draft.confidence != null && (
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,fontSize:12,color:"var(--color-text-secondary)"}}>
+                      <span>AI confidence</span>
+                      <div style={{flex:1,height:3,background:"var(--color-border-tertiary)",borderRadius:2,overflow:"hidden"}}>
+                        <div style={{width:`${Math.round(draft.confidence*100)}%`,height:"100%",borderRadius:2,background:draft.confidence>.7?"#008624":draft.confidence>.5?"#BA7517":"#A32D2D"}} />
+                      </div>
+                      <span style={{fontWeight:500,minWidth:32}}>{Math.round(draft.confidence*100)}%</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {appError && <div style={{background:"#FCEBEB",border:"0.5px solid #F09595",borderRadius:8,padding:"9px 14px",color:"#A32D2D",fontSize:13,marginBottom:9}}>⚠ {appError}</div>}
+
+            <div style={{display:"flex",gap:8}}>
+              <button className="hbtn" onClick={()=>setStage(STAGE.IDLE)}>← Aanpassen</button>
+              <button className="hbtn hbtn-success" style={{flex:1,justifyContent:"center",padding:"10px 0",fontSize:14,fontWeight:600}} onClick={createTickets}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {ticketDrafts.length > 1 ? `Bevestig & maak ${ticketDrafts.length} Jira tickets aan` : "Bevestig & maak Jira ticket aan"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── CREATING ── */}
+        {stage === STAGE.CREATING && (
+          <div className="hfade" style={{textAlign:"center",padding:"80px 0"}}>
+            <Spinner size={36} /><div style={{fontSize:14,fontWeight:500,marginTop:16}}>Jira ticket wordt aangemaakt…</div>
+          </div>
+        )}
+
+        {/* ── DONE ── */}
+        {stage === STAGE.DONE && createdTickets.length > 0 && (
+          <div className="hfade" style={{maxWidth:680,margin:"0 auto",padding:"28px 16px"}}>
+            <div style={{textAlign:"center",marginBottom:20}}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:"#E8F5EC",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#008624" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div style={{fontSize:18,fontWeight:600}}>
+                {createdTickets.length === 1 ? "Ticket aangemaakt!" : `${createdTickets.length} tickets aangemaakt!`}
+              </div>
+            </div>
+
+            {createdTickets.some(t => t.priority === "Business Critical") && (
+              <div style={{background:"#B42318",borderRadius:9,padding:"11px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+                <CriticalAlertIcon size={28} />
+                <div>
+                  <div style={{fontSize:14,fontWeight:800,color:"#fff",fontFamily:"Arial,Helvetica,sans-serif"}}>Business Critical support request</div>
+                  <div style={{fontSize:12,color:"#FFE4E8",marginTop:2}}>Support team is op de hoogte gebracht — contacteer de apotheek telefonisch.</div>
+                </div>
+              </div>
+            )}
+
+            {createdTickets.map((ticket, idx) => (
+              <div key={ticket.key} className="hcard" style={{marginBottom:10,border:"0.5px solid #A8D5A9"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:22,fontWeight:600,color:"#008624",fontFamily:"var(--font-mono)"}}>{ticket.key}</div>
+                    <div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:2}}>{ticket.project} · {ticket.issueType}</div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"flex-end"}}>
+                    <Badge color="#E8F5EC" tx="#008624" br="#7AC483">✓ Aangemaakt</Badge>
+                    <PriorityBadge priority={ticket.priority} />
+                  </div>
+                </div>
+                <div style={{fontSize:13,lineHeight:1.5,marginBottom:12,color:"var(--color-text-secondary)"}}>{ticket.summary}</div>
+                <a href={ticket.url} target="_blank" rel="noopener noreferrer"
+                  style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:13,color:"#008624",textDecoration:"none",fontWeight:500}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Bekijk in Jira →
+                </a>
+              </div>
+            ))}
+
+            <button className="hbtn hbtn-primary" style={{width:"100%",justifyContent:"center",padding:"11px 0",fontSize:14,fontWeight:600}} onClick={reset}>
+              + Nieuw probleem melden
+            </button>
+          </div>
+        )}
+
+      </main>
+
+      <AppFooter />
+    </div>
+  );
+}
