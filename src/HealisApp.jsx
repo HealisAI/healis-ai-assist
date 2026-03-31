@@ -107,6 +107,19 @@ function HealisLogo({ width = 110 }) {
   );
 }
 
+function HealisLogoWhite({ width = 110 }) {
+  const h = Math.round(width * 168.53 / 593.26);
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 593.26 168.53" width={width} height={h} aria-label="Healis">
+      <path fill="#ffffff" d="M0 75.31h64.23V85H0zM75.88 97.22h9.69v64.23h-9.69zM75.88 0h9.69v64.23h-9.69z"/>
+      <path fill="#c4bff5" d="M97.22 75.88h64.23v9.69H97.22zM173.1 0h9.69v161.45h-9.69z"/>
+      <g fill="#ffffff">
+        <path d="M566.66 122.66c15.18 0 26.6-6.94 26.6-18.48 0-10.71-10.12-16.12-24.01-18.01-12.83-1.77-19.77-4.12-19.77-8.12 0-4.24 7.06-7.18 17.07-7.18s17.42 3.41 17.42 8.24h8.24c0-11.18-10.59-19.3-25.66-19.3-14.12 0-25.19 6.59-25.19 17.77 0 10.36 9.42 16.01 23.3 18.01 13.06 1.77 20.36 3.88 20.36 8.36s-7.41 7.65-18.24 7.65-18.48-3.77-18.48-9.06h-8c0 11.53 10.83 20.13 26.36 20.13M519 121.24h8V61.22h-8zm4-71.91c4.24 0 7.41-2.82 7.41-6.36s-3.18-6.47-7.41-6.47-7.41 2.82-7.41 6.47 3.18 6.36 7.41 6.36m-29.18 71.91h8V36.51h-8v84.74zm-48.73-10c-13.54 0-23.54-8.59-23.54-20.01s10-20.01 23.54-20.01 23.54 8.59 23.54 20.01-10.12 20.01-23.54 20.01m23.54-50.02v15.42c-4.47-10.12-13.77-16.83-25.42-16.83-17.18 0-30.01 13.53-30.01 31.42s12.83 31.42 30.01 31.42c11.65 0 20.95-6.71 25.42-16.83v15.42h8V61.22zm-96.86 10.12c11.77 0 21.3 6.36 23.42 15.54h-46.84c2.24-9.18 11.53-15.54 23.42-15.54m31.9 20.13c0-18.24-13.77-31.66-31.9-31.66s-32.01 13.53-32.01 31.42 13.77 31.42 32.13 31.42c14.01 0 25.54-7.41 30.48-18.71h-9.77c-4.12 4.35-11.89 7.18-20.6 7.18-12.24 0-21.42-6.47-23.66-15.65h55.08c.12-1.3.24-2.71.24-4m-86.85-51.43v34.13h-49.43V40.04h-8.71v81.21h8.71v-34.6h49.43v34.6h8.71V40.04z"/>
+      </g>
+    </svg>
+  );
+}
+
 function Badge({ color, tx, br, children }) {
   return <span style={{display:"inline-flex",alignItems:"center",gap:4,background:color,color:tx,border:`0.5px solid ${br}`,borderRadius:6,padding:"2px 9px",fontSize:12,fontWeight:500}}>{children}</span>;
 }
@@ -136,6 +149,38 @@ function FieldRow({ label, value, editable, onChange, mono }) {
         ? <input value={value||""} onChange={e=>onChange(e.target.value)} style={{fontSize:13,padding:"4px 8px",borderRadius:6,border:"0.5px solid var(--color-border-secondary)",background:"var(--color-background-secondary)",color:"var(--color-text-primary)",width:"100%",boxSizing:"border-box",fontFamily:mono?"var(--font-mono)":"var(--font-sans)"}} />
         : <span style={{fontSize:13,color:"var(--color-text-primary)",lineHeight:1.5,fontFamily:mono?"var(--font-mono)":"inherit"}}>{value||<span style={{color:"var(--color-text-tertiary)",fontStyle:"italic"}}>Niet gedetecteerd</span>}</span>
       }
+    </div>
+  );
+}
+
+function BrandingPanel() {
+  return (
+    <div className="select-left">
+      <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",height:"100%"}}>
+        <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.55)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:14}}>Healis Assist</div>
+        <div style={{fontSize:22,fontWeight:700,color:"#fff",lineHeight:1.35,marginBottom:10}}>
+          Samen sterk in zorg,<br/>persoonlijk en dichtbij.
+        </div>
+        <div style={{fontSize:13,color:"rgba(255,255,255,0.78)",lineHeight:1.75,marginBottom:32}}>
+          Meld een probleem via spraak of tekst. AI verwerkt uw melding en maakt automatisch de juiste tickets aan voor het betrokken team.
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:18,marginBottom:32}}>
+          {[
+            { icon:"🎙️", title:"Spraak of tekst", desc:"Meld in uw eigen woorden, in het Nederlands" },
+            { icon:"🤖", title:"AI-verwerking", desc:"AI detecteert categorie, prioriteit en dienst automatisch" },
+            { icon:"🎫", title:"Automatische tickets", desc:"Rechtstreeks aangemaakt in Jira — IT, Facility, HR of Operations" },
+            { icon:"🚨", title:"Business Critical herkenning", desc:"Urgente meldingen worden onmiddellijk geflagd en doorgestuurd" },
+          ].map(({icon,title,desc}) => (
+            <div key={title} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+              <span style={{fontSize:18,lineHeight:"22px",flexShrink:0,marginTop:1}}>{icon}</span>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:"#fff",marginBottom:2}}>{title}</div>
+                <div style={{fontSize:12,color:"rgba(255,255,255,0.65)",lineHeight:1.55}}>{desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -442,6 +487,11 @@ Prioriteiten:
         .pharm-card{background:var(--color-background-primary);border:1.5px solid var(--color-border-tertiary);border-radius:10px;padding:11px 13px;cursor:pointer;transition:border-color .13s,background .13s}
         .pharm-card:hover{border-color:#7AC483;background:#f8fdf8}
         .pharm-card.selected{border-color:#008624;background:#E8F5EC}
+        .select-layout{display:flex;min-height:calc(100vh - 57px)}
+        .select-left{flex:0 0 380px;background:linear-gradient(160deg,#005A18 0%,#008624 55%,#1a9e3a 100%);padding:48px 40px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+        .select-left::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
+        .select-right{flex:1;padding:36px 36px 28px;overflow-y:auto;display:flex;flex-direction:column}
+        @media(max-width:780px){.select-layout{flex-direction:column-reverse}.select-left{flex:none;padding:24px 20px}.select-right{padding:24px 16px}}
       `}</style>
 
       <AppHeader />
@@ -450,76 +500,87 @@ Prioriteiten:
 
         {/* ── PHARMACY SELECT SCREEN ── */}
         {stage === STAGE.SELECT && (
-          <div className="hfade" style={{maxWidth:860,margin:"0 auto",padding:"28px 16px 32px"}}>
-            <div style={{textAlign:"center",marginBottom:24}}>
-              <div style={{fontSize:21,fontWeight:700,marginBottom:6}}>Selecteer uw apotheek</div>
-              <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
-                Kies uw apotheek zodat we uw melding automatisch kunnen koppelen.
+          <div className="hfade select-layout">
+
+            {/* ── Left: branding panel ── */}
+            <BrandingPanel />
+
+            {/* ── Right: pharmacy selector ── */}
+            <div className="select-right">
+              <div style={{maxWidth:560,width:"100%",margin:"0 auto",flex:1,display:"flex",flexDirection:"column"}}>
+                <div style={{marginBottom:20}}>
+                  <div style={{fontSize:18,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Selecteer uw apotheek</div>
+                  <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
+                    Kies uw apotheek zodat we uw melding automatisch kunnen koppelen.
+                  </div>
+                </div>
+
+                {/* Search */}
+                <div style={{position:"relative",marginBottom:14}}>
+                  <svg style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    placeholder="Zoek op naam, alias of stad…"
+                    value={pickSearch}
+                    onChange={e => setPickSearch(e.target.value)}
+                    autoFocus
+                    style={{width:"100%",boxSizing:"border-box",padding:"10px 12px 10px 34px",fontSize:14,borderRadius:9,border:"0.5px solid var(--color-border-secondary)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",fontFamily:"var(--font-sans)"}}
+                  />
+                </div>
+
+                {/* Pharmacy grid */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8,marginBottom:18,maxHeight:"38vh",overflowY:"auto",paddingRight:2,flex:1}}>
+                  {filteredPick.map(p => (
+                    <div
+                      key={p.alias}
+                      className={`pharm-card${pickSelected?.alias === p.alias ? " selected" : ""}`}
+                      onClick={() => setPickSelected(prev => prev?.alias === p.alias ? null : p)}
+                    >
+                      <div style={{display:"flex",alignItems:"baseline",gap:7,marginBottom:3}}>
+                        <span style={{fontSize:15,fontWeight:700,color:"#008624",fontFamily:"var(--font-mono)"}}>{p.alias}</span>
+                        {pickSelected?.alias === p.alias && <span style={{fontSize:11,color:"#008624"}}>✓ Geselecteerd</span>}
+                      </div>
+                      <div style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)",lineHeight:1.3}}>{p.name.replace(/^(Apotheek|Pharmacie)\s/,"")}</div>
+                      <div style={{fontSize:11,color:"var(--color-text-tertiary)",marginTop:2}}>{p.city}</div>
+                    </div>
+                  ))}
+                  {filteredPick.length === 0 && (
+                    <div style={{gridColumn:"1/-1",textAlign:"center",padding:"32px 0",color:"var(--color-text-tertiary)",fontSize:13}}>
+                      Geen apotheken gevonden voor "{pickSearch}"
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div style={{display:"flex",flexDirection:"column",gap:10,alignItems:"stretch"}}>
+                  <button
+                    className="hbtn hbtn-primary"
+                    style={{justifyContent:"center",padding:"13px 0",fontSize:15,fontWeight:600,borderRadius:10}}
+                    onClick={confirmPharmacySelection}
+                    disabled={!pickSelected}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    {pickSelected ? `Doorgaan met ${pickSelected.alias} — ${pickSelected.name.replace(/^(Apotheek|Pharmacie)\s/,"")}` : "Selecteer een apotheek"}
+                  </button>
+                  <button
+                    className="hbtn"
+                    style={{justifyContent:"center",fontSize:12,color:"var(--color-text-tertiary)",border:"none",background:"transparent",padding:"4px 0"}}
+                    onClick={confirmPharmacySelection}
+                  >
+                    Doorgaan zonder apotheek te selecteren
+                    <span style={{fontSize:11,color:"var(--color-text-tertiary)",marginLeft:4}}>(bijv. voor een discrete melding)</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Search */}
-            <div style={{position:"relative",marginBottom:16}}>
-              <svg style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input
-                placeholder="Zoek op naam, alias of stad…"
-                value={pickSearch}
-                onChange={e => setPickSearch(e.target.value)}
-                autoFocus
-                style={{width:"100%",boxSizing:"border-box",padding:"10px 12px 10px 34px",fontSize:14,borderRadius:9,border:"0.5px solid var(--color-border-secondary)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",fontFamily:"var(--font-sans)"}}
-              />
-            </div>
-
-            {/* Pharmacy grid */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:8,marginBottom:20,maxHeight:"38vh",overflowY:"auto",paddingRight:2}}>
-              {filteredPick.map(p => (
-                <div
-                  key={p.alias}
-                  className={`pharm-card${pickSelected?.alias === p.alias ? " selected" : ""}`}
-                  onClick={() => setPickSelected(prev => prev?.alias === p.alias ? null : p)}
-                >
-                  <div style={{display:"flex",alignItems:"baseline",gap:7,marginBottom:3}}>
-                    <span style={{fontSize:15,fontWeight:700,color:"#008624",fontFamily:"var(--font-mono)"}}>{p.alias}</span>
-                    {pickSelected?.alias === p.alias && <span style={{fontSize:11,color:"#008624"}}>✓ Geselecteerd</span>}
-                  </div>
-                  <div style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)",lineHeight:1.3}}>{p.name.replace(/^(Apotheek|Pharmacie)\s/,"")}</div>
-                  <div style={{fontSize:11,color:"var(--color-text-tertiary)",marginTop:2}}>{p.city}</div>
-                </div>
-              ))}
-              {filteredPick.length === 0 && (
-                <div style={{gridColumn:"1/-1",textAlign:"center",padding:"32px 0",color:"var(--color-text-tertiary)",fontSize:13}}>
-                  Geen apotheken gevonden voor "{pickSearch}"
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div style={{display:"flex",flexDirection:"column",gap:10,alignItems:"center"}}>
-              <button
-                className="hbtn hbtn-primary"
-                style={{width:"100%",maxWidth:400,justifyContent:"center",padding:"12px 0",fontSize:15,fontWeight:600}}
-                onClick={confirmPharmacySelection}
-                disabled={!pickSelected}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                {pickSelected ? `Doorgaan met ${pickSelected.alias} — ${pickSelected.name.replace(/^(Apotheek|Pharmacie)\s/,"")}` : "Selecteer een apotheek"}
-              </button>
-
-              <button
-                className="hbtn"
-                style={{fontSize:12,color:"var(--color-text-tertiary)",border:"none",background:"transparent",padding:"4px 0"}}
-                onClick={confirmPharmacySelection}  // matchedPharmacy stays null
-              >
-                Doorgaan zonder apotheek te selecteren
-                <span style={{fontSize:11,color:"var(--color-text-tertiary)",marginLeft:4}}>(bijv. voor een discrete melding)</span>
-              </button>
-            </div>
           </div>
         )}
 
         {/* ── MELD EEN PROBLEEM (IDLE / RECORDING / PROCESSING) ── */}
         {[STAGE.IDLE, STAGE.RECORDING, STAGE.PROCESSING].includes(stage) && (
-          <div className="hfade" style={{maxWidth:680,margin:"0 auto",padding:"28px 16px"}}>
+          <div className="hfade select-layout">
+          <BrandingPanel />
+          <div className="select-right"><div style={{maxWidth:560,width:"100%",margin:"0 auto"}}>
             <div style={{textAlign:"center",marginBottom:22}}>
               {matchedPharmacy && (
                 <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"#E8F5EC",border:"0.5px solid #7AC483",borderRadius:20,padding:"4px 12px",fontSize:12,color:"#008624",fontWeight:500,marginBottom:10}}>
@@ -530,7 +591,7 @@ Prioriteiten:
               )}
               <div style={{fontSize:21,fontWeight:700,marginBottom:5}}>Meld een Probleem</div>
               <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
-                Beschrijf uw probleem via stem of tekst — Claude AI routeert automatisch naar het juiste Jira project.
+                Beschrijf uw probleem via stem of tekst — AI routeert automatisch naar het juiste Jira project.
               </div>
             </div>
 
@@ -632,12 +693,14 @@ Prioriteiten:
                 </div>
               )}
             </div>
-          </div>
+          </div></div></div>
         )}
 
         {/* ── REVIEW ── */}
         {stage === STAGE.REVIEW && ticketDrafts.length > 0 && (
-          <div className="hfade" style={{maxWidth:680,margin:"0 auto",padding:"28px 16px"}}>
+          <div className="hfade select-layout">
+          <BrandingPanel />
+          <div className="select-right"><div style={{maxWidth:560,width:"100%",margin:"0 auto"}}>
             {isBC && (
               <div style={{background:"#B42318",color:"#fff",borderRadius:9,padding:"11px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
                 <CriticalAlertIcon size={28} />
@@ -744,7 +807,7 @@ Prioriteiten:
                 {ticketDrafts.length > 1 ? `Bevestig & maak ${ticketDrafts.length} Jira tickets aan` : "Bevestig & maak Jira ticket aan"}
               </button>
             </div>
-          </div>
+          </div></div></div>
         )}
 
         {/* ── CREATING ── */}
@@ -756,7 +819,9 @@ Prioriteiten:
 
         {/* ── DONE ── */}
         {stage === STAGE.DONE && createdTickets.length > 0 && (
-          <div className="hfade" style={{maxWidth:680,margin:"0 auto",padding:"28px 16px"}}>
+          <div className="hfade select-layout">
+          <BrandingPanel />
+          <div className="select-right"><div style={{maxWidth:560,width:"100%",margin:"0 auto"}}>
             <div style={{textAlign:"center",marginBottom:20}}>
               <div style={{width:48,height:48,borderRadius:"50%",background:"#E8F5EC",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#008624" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -800,7 +865,7 @@ Prioriteiten:
             <button className="hbtn hbtn-primary" style={{width:"100%",justifyContent:"center",padding:"11px 0",fontSize:14,fontWeight:600}} onClick={reset}>
               + Nieuw probleem melden
             </button>
-          </div>
+          </div></div></div>
         )}
 
       </main>
