@@ -157,6 +157,9 @@ function BrandingPanel() {
   return (
     <div className="select-left">
       <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",height:"100%"}}>
+        <div style={{fontSize:22,fontWeight:700,color:"#fff",lineHeight:1.35,marginBottom:10}}>
+          Samen sterk in zorg,<br/>persoonlijk en dichtbij.
+        </div>
         <div style={{fontSize:13,color:"rgba(255,255,255,0.78)",lineHeight:1.75,marginBottom:32}}>
           Meld een probleem via spraak of tekst. AI verwerkt uw melding en maakt automatisch de juiste tickets aan voor het betrokken team.
         </div>
