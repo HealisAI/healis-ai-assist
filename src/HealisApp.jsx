@@ -480,7 +480,7 @@ Prioriteiten:
   const isBC = ticketDrafts.some(d => d.priority === "Business Critical");
 
   return (
-    <div style={{fontFamily:"var(--font-sans)",background:"var(--color-background-tertiary)",height:"100dvh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+    <div style={{fontFamily:"var(--font-sans)",background:"var(--color-background-tertiary)",minHeight:"100dvh",display:"flex",flexDirection:"column"}}>
       <style>{`
         @keyframes hfade{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
         @keyframes hspin{to{transform:rotate(360deg)}}
@@ -510,7 +510,7 @@ Prioriteiten:
         .pharm-card{background:var(--color-background-primary);border:1.5px solid var(--color-border-tertiary);border-radius:10px;padding:11px 13px;cursor:pointer;transition:border-color .13s,background .13s}
         .pharm-card:hover{border-color:#7AC483;background:#f8fdf8}
         .pharm-card.selected{border-color:#008624;background:#E8F5EC}
-        .select-layout{display:flex;flex:1;min-height:0}
+        .select-layout{display:flex;min-height:calc(100dvh - 109px)}
         .select-left{flex:0 0 360px;background:linear-gradient(160deg,#005A18 0%,#008624 55%,#1a9e3a 100%);padding:44px 38px;display:flex;flex-direction:column;position:relative;overflow:hidden}
         .select-left::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
         .select-right{flex:1;padding:36px 36px 28px;overflow-y:auto;display:flex;flex-direction:column}
@@ -520,7 +520,7 @@ Prioriteiten:
 
       <AppHeader />
 
-      <main style={{flex:1,minHeight:0,display:"flex",flexDirection:"column",overflowY:"auto"}}>
+      <main style={{flex:1,display:"flex",flexDirection:"column"}}>
 
         {/* ── PHARMACY SELECT SCREEN ── */}
         {stage === STAGE.SELECT && (
