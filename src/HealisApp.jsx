@@ -854,12 +854,12 @@ Prioriteiten:
 
             {appError && <div style={{background:"#FCEBEB",border:"0.5px solid #F09595",borderRadius:8,padding:"9px 14px",color:"#A32D2D",fontSize:13,marginBottom:9}}>⚠ {appError}</div>}
 
-            <div style={{display:"flex",gap:8}}>
-              <button className="hbtn" onClick={()=>setStage(STAGE.IDLE)}>← Aanpassen</button>
-              <button className="hbtn hbtn-success" style={{flex:1,justifyContent:"center",padding:"10px 0",fontSize:14,fontWeight:600}} onClick={createTickets}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                {ticketDrafts.length > 1 ? `Bevestig & maak ${ticketDrafts.length} Jira tickets aan` : "Bevestig & maak Jira ticket aan"}
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <button className="hbtn hbtn-success" style={{width:"100%",justifyContent:"center",padding:"13px 0",fontSize:15,fontWeight:600,borderRadius:10}} onClick={createTickets}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {ticketDrafts.length > 1 ? `Bevestig & maak ${ticketDrafts.length} tickets aan` : "Bevestig & maak ticket aan"}
               </button>
+              <button className="hbtn" style={{alignSelf:"center",fontSize:13,border:"none",background:"transparent",color:"var(--color-text-tertiary)",padding:"4px 8px"}} onClick={()=>setStage(STAGE.IDLE)}>← Aanpassen</button>
             </div>
           </div></div></div>
         )}
