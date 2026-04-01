@@ -486,7 +486,7 @@ Prioriteiten:
         @keyframes hspin{to{transform:rotate(360deg)}}
         @keyframes hrecblink{0%,100%{opacity:1}50%{opacity:.3}}
         @keyframes hrecpulse{0%,100%{box-shadow:0 0 0 0 rgba(163,45,45,.5)}70%{box-shadow:0 0 0 14px rgba(163,45,45,0)}}
-        @keyframes hmicglow{0%,100%{box-shadow:0 6px 24px rgba(140,132,227,.4),0 0 0 0 rgba(140,132,227,.3)}70%{box-shadow:0 6px 24px rgba(140,132,227,.4),0 0 0 16px rgba(140,132,227,0)}}
+        @keyframes hmicglow{0%,100%{box-shadow:0 6px 24px rgba(220,60,90,.35),0 0 0 0 rgba(220,60,90,.25)}70%{box-shadow:0 6px 24px rgba(220,60,90,.35),0 0 0 16px rgba(220,60,90,0)}}
         @keyframes hmicpulse{0%,100%{box-shadow:0 6px 24px rgba(163,45,45,.4),0 0 0 0 rgba(163,45,45,.4)}70%{box-shadow:0 6px 24px rgba(163,45,45,.4),0 0 0 20px rgba(163,45,45,0)}}
         .hfade{animation:hfade .25s ease forwards}
         .hcard{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1.3rem}
@@ -502,8 +502,8 @@ Prioriteiten:
         .hbtn-rec:hover:not(:disabled){background:#f8d8d8}
         .hbtn-rec-active{background:#F7C1C1;color:#A32D2D;border-color:#E08080;animation:hrecpulse 1.4s ease-in-out infinite}
         .hrecdot{width:9px;height:9px;border-radius:50%;background:#A32D2D;animation:hrecblink 1s ease-in-out infinite;flex-shrink:0}
-        .hmicbtn{width:84px;height:84px;border-radius:50%;background:#8c84e3;color:#fff;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s,background .15s;animation:hmicglow 2s ease-in-out infinite;flex-shrink:0}
-        .hmicbtn:hover{transform:scale(1.07);background:#7068c9}
+        .hmicbtn{width:84px;height:84px;border-radius:50%;background:#DC3C5A;color:#fff;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s,background .15s;animation:hmicglow 2s ease-in-out infinite;flex-shrink:0}
+        .hmicbtn:hover{transform:scale(1.07);background:#C4304C}
         .hmicbtn:active{transform:scale(.94)}
         .hmicbtn-rec{background:#A32D2D;animation:hmicpulse 1.2s ease-in-out infinite}
         .hmicbtn-rec:hover{background:#7A2020}
