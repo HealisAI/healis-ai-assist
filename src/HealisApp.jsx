@@ -480,7 +480,7 @@ Prioriteiten:
   const isBC = ticketDrafts.some(d => d.priority === "Business Critical");
 
   return (
-    <div style={{fontFamily:"var(--font-sans)",background:"var(--color-background-tertiary)",height:"100dvh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+    <div style={{fontFamily:"var(--font-sans)",background:"var(--color-background-tertiary)",minHeight:"100dvh",display:"flex",flexDirection:"column"}}>
       <style>{`
         @keyframes hfade{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
         @keyframes hspin{to{transform:rotate(360deg)}}
@@ -520,7 +520,7 @@ Prioriteiten:
 
       <AppHeader />
 
-      <main style={{flex:1,display:"flex",flexDirection:"column",overflow:"auto",minHeight:0}}>
+      <main style={{flex:1,display:"flex",flexDirection:"column"}}>
 
         {/* ── PHARMACY SELECT SCREEN ── */}
         {stage === STAGE.SELECT && (
