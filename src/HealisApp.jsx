@@ -311,6 +311,7 @@ export default function HealisApp() {
   const [pharmSearch,     setPharmSearch]     = useState("");
   const [showPicker,      setShowPicker]      = useState(false);
   const [showTips,        setShowTips]        = useState(false);
+  const [showTextInput,   setShowTextInput]   = useState(false);
   const [recSeconds,      setRecSeconds]      = useState(0);
 
   const srRef    = useRef(null);
@@ -446,7 +447,7 @@ Prioriteiten:
     setStage(STAGE.SELECT); setInputText(""); setTicketDrafts([]);
     setMatchedPharmacy(null); setCreatedTickets([]); setAppError(null);
     setEditModes({}); setShowPicker(false); setPharmSearch("");
-    setPickSearch(""); setPickSelected(null);
+    setPickSearch(""); setPickSelected(null); setShowTextInput(false);
   };
 
   const confirmPharmacySelection = () => {
@@ -464,12 +465,14 @@ Prioriteiten:
   const isBC = ticketDrafts.some(d => d.priority === "Business Critical");
 
   return (
-    <div style={{fontFamily:"var(--font-sans)",background:"var(--color-background-tertiary)",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+    <div style={{fontFamily:"var(--font-sans)",background:"var(--color-background-tertiary)",height:"100dvh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <style>{`
         @keyframes hfade{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
         @keyframes hspin{to{transform:rotate(360deg)}}
         @keyframes hrecblink{0%,100%{opacity:1}50%{opacity:.3}}
         @keyframes hrecpulse{0%,100%{box-shadow:0 0 0 0 rgba(163,45,45,.5)}70%{box-shadow:0 0 0 14px rgba(163,45,45,0)}}
+        @keyframes hmicglow{0%,100%{box-shadow:0 6px 24px rgba(140,132,227,.4),0 0 0 0 rgba(140,132,227,.3)}70%{box-shadow:0 6px 24px rgba(140,132,227,.4),0 0 0 16px rgba(140,132,227,0)}}
+        @keyframes hmicpulse{0%,100%{box-shadow:0 6px 24px rgba(163,45,45,.4),0 0 0 0 rgba(163,45,45,.4)}70%{box-shadow:0 6px 24px rgba(163,45,45,.4),0 0 0 20px rgba(163,45,45,0)}}
         .hfade{animation:hfade .25s ease forwards}
         .hcard{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1.3rem}
         .hbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);font-size:13px;font-weight:500;cursor:pointer;transition:background .12s,transform .1s;font-family:var(--font-sans)}
@@ -484,19 +487,25 @@ Prioriteiten:
         .hbtn-rec:hover:not(:disabled){background:#f8d8d8}
         .hbtn-rec-active{background:#F7C1C1;color:#A32D2D;border-color:#E08080;animation:hrecpulse 1.4s ease-in-out infinite}
         .hrecdot{width:9px;height:9px;border-radius:50%;background:#A32D2D;animation:hrecblink 1s ease-in-out infinite;flex-shrink:0}
+        .hmicbtn{width:84px;height:84px;border-radius:50%;background:#8c84e3;color:#fff;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s,background .15s;animation:hmicglow 2s ease-in-out infinite;flex-shrink:0}
+        .hmicbtn:hover{transform:scale(1.07);background:#7068c9}
+        .hmicbtn:active{transform:scale(.94)}
+        .hmicbtn-rec{background:#A32D2D;animation:hmicpulse 1.2s ease-in-out infinite}
+        .hmicbtn-rec:hover{background:#7A2020}
         .pharm-card{background:var(--color-background-primary);border:1.5px solid var(--color-border-tertiary);border-radius:10px;padding:11px 13px;cursor:pointer;transition:border-color .13s,background .13s}
         .pharm-card:hover{border-color:#7AC483;background:#f8fdf8}
         .pharm-card.selected{border-color:#008624;background:#E8F5EC}
-        .select-layout{display:flex;min-height:calc(100vh - 57px)}
-        .select-left{flex:0 0 380px;background:linear-gradient(160deg,#005A18 0%,#008624 55%,#1a9e3a 100%);padding:48px 40px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+        .select-layout{display:flex;flex:1;min-height:0}
+        .select-left{flex:0 0 360px;background:linear-gradient(160deg,#005A18 0%,#008624 55%,#1a9e3a 100%);padding:44px 38px;display:flex;flex-direction:column;position:relative;overflow:hidden}
         .select-left::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
         .select-right{flex:1;padding:36px 36px 28px;overflow-y:auto;display:flex;flex-direction:column}
-        @media(max-width:780px){.select-layout{flex-direction:column-reverse}.select-left{flex:none;padding:24px 20px}.select-right{padding:24px 16px}}
+        input,textarea{font-size:16px}
+        @media(max-width:780px){.select-layout{flex-direction:column-reverse;min-height:auto;flex:none}.select-left{flex:none;padding:24px 20px}.select-right{flex:none;padding:24px 16px;overflow-y:visible}}
       `}</style>
 
       <AppHeader />
 
-      <main style={{flex:1}}>
+      <main style={{flex:1,minHeight:0,display:"flex",flexDirection:"column",overflowY:"auto"}}>
 
         {/* ── PHARMACY SELECT SCREEN ── */}
         {stage === STAGE.SELECT && (
@@ -580,77 +589,107 @@ Prioriteiten:
         {[STAGE.IDLE, STAGE.RECORDING, STAGE.PROCESSING].includes(stage) && (
           <div className="hfade select-layout">
           <BrandingPanel />
-          <div className="select-right"><div style={{maxWidth:560,width:"100%",margin:"0 auto"}}>
-            <div style={{textAlign:"center",marginBottom:22}}>
-              {matchedPharmacy && (
-                <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"#E8F5EC",border:"0.5px solid #7AC483",borderRadius:20,padding:"4px 12px",fontSize:12,color:"#008624",fontWeight:500,marginBottom:10}}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  {matchedPharmacy.alias} — {matchedPharmacy.name}
-                  <button onClick={()=>setMatchedPharmacy(null)} style={{background:"none",border:"none",cursor:"pointer",color:"#008624",padding:0,fontSize:13,lineHeight:1,marginLeft:2}}>×</button>
-                </div>
-              )}
-              <div style={{fontSize:21,fontWeight:700,marginBottom:5}}>Meld een Probleem</div>
-              <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
-                Beschrijf uw probleem via stem of tekst — AI routeert automatisch naar het juiste Jira project.
+          <div className="select-right"><div style={{maxWidth:520,width:"100%",margin:"0 auto",display:"flex",flexDirection:"column",gap:14,alignItems:"center"}}>
+
+            {/* Pharmacy pill */}
+            {matchedPharmacy && (
+              <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"#E8F5EC",border:"0.5px solid #7AC483",borderRadius:20,padding:"5px 13px",fontSize:12,color:"#008624",fontWeight:500}}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {matchedPharmacy.alias} — {matchedPharmacy.name}
+                <button onClick={()=>setMatchedPharmacy(null)} style={{background:"none",border:"none",cursor:"pointer",color:"#008624",padding:0,fontSize:14,lineHeight:1,marginLeft:2}}>×</button>
               </div>
-            </div>
+            )}
 
-            <div className="hcard" style={{marginBottom:12}}>
-              {stage === STAGE.RECORDING && (
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 14px",background:"#FCEBEB",borderRadius:8,border:"0.5px solid #F09595"}}>
-                  <span className="hrecdot" />
-                  <span style={{fontSize:13,fontWeight:600,color:"#A32D2D"}}>Opname bezig — {fmtTime(recSeconds)}</span>
-                  <span style={{fontSize:12,color:"#791F1F",marginLeft:"auto"}}>Spreek uw probleem in</span>
-                </div>
-              )}
-              {stage === STAGE.PROCESSING && (
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 14px",background:"var(--color-background-secondary)",borderRadius:8,border:"0.5px solid var(--color-border-tertiary)"}}>
-                  <Spinner size={15} /><span style={{fontSize:13,color:"var(--color-text-secondary)"}}>{processingMsg}</span>
-                </div>
-              )}
+            {/* ── PROCESSING ── */}
+            {stage === STAGE.PROCESSING && (
+              <div style={{textAlign:"center",padding:"52px 0"}}>
+                <Spinner size={34} />
+                <div style={{fontSize:14,color:"var(--color-text-secondary)",marginTop:16}}>{processingMsg}</div>
+              </div>
+            )}
 
-              <textarea
-                value={inputText} onChange={e => setInputText(e.target.value)}
-                placeholder="Bijv: De koelkast in de stockageruimte geeft een alarm. Temperatuur te hoog voor medicijnen."
-                rows={4} disabled={busy}
-                style={{width:"100%",boxSizing:"border-box",resize:"vertical",padding:"10px 13px",lineHeight:1.65,minHeight:100,background:"var(--color-background-secondary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:8,color:"var(--color-text-primary)",fontFamily:"var(--font-sans)",fontSize:13.5,opacity:busy?0.6:1}}
-              />
-
-              {/* Inspreken + Optimaliseer row */}
-              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14}}>
-                {/* Inspreken — secondary pill */}
-                <button
-                  className={stage === STAGE.RECORDING ? "hbtn hbtn-rec-active" : "hbtn hbtn-rec"}
-                  style={{padding:"9px 20px",fontSize:13,fontWeight:600,borderRadius:50,gap:7,flexShrink:0}}
-                  onClick={stage === STAGE.RECORDING ? stopRecording : startRecording}
-                  disabled={stage === STAGE.PROCESSING}
-                >
-                  {stage === STAGE.RECORDING ? (
-                    <><svg width="13" height="13" viewBox="0 0 24 24" fill="#A32D2D"><rect x="4" y="4" width="16" height="16" rx="2.5"/></svg>Stop</>
-                  ) : (
-                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Inspreken</>
-                  )}
-                </button>
-
-                {/* Divider */}
-                <div style={{width:1,height:28,background:"var(--color-border-secondary)",flexShrink:0}} />
-
-                {/* Optimaliseer met AI — primary, grows to fill */}
-                <button className="hbtn hbtn-primary"
-                  style={{flex:1,justifyContent:"center",padding:"9px 16px",fontSize:13,fontWeight:600}}
-                  onClick={processIssue} disabled={!inputText.trim()||busy}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6l-5 3.6 1.9-5.8L4 8.8h6.1z"/>
+            {/* ── IDLE: no text, no text-input mode → hero mic ── */}
+            {stage === STAGE.IDLE && !inputText && !showTextInput && (
+              <div style={{textAlign:"center",padding:"32px 0 16px"}}>
+                <button className="hmicbtn" onClick={startRecording} aria-label="Start opname">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
                   </svg>
+                </button>
+                <div style={{fontSize:20,fontWeight:700,marginTop:22,color:"var(--color-text-primary)"}}>Spreek uw melding in</div>
+                <div style={{fontSize:13,color:"var(--color-text-secondary)",marginTop:6,lineHeight:1.65,maxWidth:320,margin:"6px auto 0"}}>
+                  Beschrijf het probleem in uw eigen woorden — AI zorgt voor de rest
+                </div>
+                <button
+                  onClick={() => setShowTextInput(true)}
+                  style={{marginTop:24,display:"inline-flex",alignItems:"center",gap:6,fontSize:13,color:"var(--color-text-tertiary)",background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:8,padding:"8px 18px",cursor:"pointer",fontFamily:"var(--font-sans)"}}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  Liever typen
+                </button>
+              </div>
+            )}
+
+            {/* ── RECORDING ── */}
+            {stage === STAGE.RECORDING && (
+              <div style={{textAlign:"center",padding:"28px 0 12px"}}>
+                <button className="hmicbtn hmicbtn-rec" onClick={stopRecording} aria-label="Stop opname">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>
+                </button>
+                <div style={{fontSize:30,fontWeight:700,color:"#A32D2D",marginTop:18}}>{fmtTime(recSeconds)}</div>
+                <div style={{fontSize:13,color:"var(--color-text-secondary)",marginTop:6}}>Opname bezig — tik om te stoppen</div>
+                {inputText && (
+                  <div style={{marginTop:16,textAlign:"left",padding:"10px 14px",background:"var(--color-background-secondary)",borderRadius:8,fontSize:13,color:"var(--color-text-secondary)",lineHeight:1.65,fontStyle:"italic",border:"0.5px solid var(--color-border-secondary)"}}>
+                    "{inputText}"
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── IDLE: has text (post-recording) or text-input mode ── */}
+            {stage === STAGE.IDLE && (inputText || showTextInput) && (
+              <>
+                {/* Transcript preview — non-edit */}
+                {inputText && !showTextInput && (
+                  <div className="hcard" style={{marginBottom:0,alignSelf:"stretch"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:"#008624"}}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                        Opname verwerkt
+                      </div>
+                      <button onClick={()=>setShowTextInput(true)} style={{fontSize:12,color:"var(--color-text-tertiary)",background:"none",border:"none",cursor:"pointer",padding:0}}>Bewerken ✏</button>
+                    </div>
+                    <div style={{fontSize:14,lineHeight:1.7,color:"var(--color-text-primary)"}}>{inputText}</div>
+                  </div>
+                )}
+                {/* Text input (fallback or edit mode) */}
+                {showTextInput && (
+                  <textarea
+                    value={inputText} onChange={e=>setInputText(e.target.value)}
+                    placeholder="Bijv: De koelkast in de stockageruimte geeft een alarm. Temperatuur te hoog voor medicijnen."
+                    rows={5} autoFocus
+                    style={{width:"100%",alignSelf:"stretch",boxSizing:"border-box",resize:"vertical",padding:"12px 14px",lineHeight:1.65,minHeight:120,background:"var(--color-background-secondary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:10,color:"var(--color-text-primary)",fontFamily:"var(--font-sans)",fontSize:16}}
+                  />
+                )}
+                {/* Primary CTA */}
+                <button className="hbtn hbtn-primary" style={{width:"100%",alignSelf:"stretch",justifyContent:"center",padding:"13px 0",fontSize:15,fontWeight:600,borderRadius:10}} onClick={processIssue} disabled={!inputText.trim()}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6l-5 3.6 1.9-5.8L4 8.8h6.1z"/></svg>
                   Optimaliseer met AI
                 </button>
-              </div>
-              <div style={{textAlign:"center",fontSize:11,color:"var(--color-text-tertiary)",marginTop:8}}>
-                AI structureert uw melding — u krijgt nog de kans om te controleren en aan te passen vóór het aanmaken
-              </div>
-            </div>
+                <div style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",marginTop:-6}}>U krijgt nog de kans om te controleren vóór het aanmaken</div>
+                {/* Secondary actions */}
+                <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
+                  <button onClick={()=>{setInputText("");setShowTextInput(false);}} style={{fontSize:12,color:"var(--color-text-tertiary)",background:"none",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"var(--font-sans)"}}>↺ Opnieuw beginnen</button>
+                  {!showTextInput && <button onClick={startRecording} style={{fontSize:12,color:"var(--color-text-tertiary)",background:"none",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"var(--font-sans)"}}>🎙 Opnieuw inspreken</button>}
+                  {!showTextInput && <button onClick={()=>setShowTextInput(true)} style={{fontSize:12,color:"var(--color-text-tertiary)",background:"none",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"var(--font-sans)"}}>✏ Bewerken</button>}
+                </div>
+              </>
+            )}
 
-            {appError && <div style={{background:"#FCEBEB",border:"0.5px solid #F09595",borderRadius:8,padding:"9px 14px",color:"#A32D2D",fontSize:13,marginBottom:10}}>⚠ {appError}</div>}
+            {appError && <div style={{background:"#FCEBEB",border:"0.5px solid #F09595",borderRadius:8,padding:"9px 14px",color:"#A32D2D",fontSize:13}}>⚠ {appError}</div>}
 
             <button className="hbtn" style={{fontSize:12,color:"var(--color-text-tertiary)",border:"none",background:"transparent",padding:"4px 0"}}
               onClick={() => setStage(STAGE.SELECT)}>
@@ -658,10 +697,10 @@ Prioriteiten:
             </button>
 
             {/* Tips & tricks collapsible */}
-            <div style={{marginTop:16,borderRadius:9,border:"0.5px solid var(--color-border-secondary)",overflow:"hidden"}}>
+            <div style={{alignSelf:"stretch",borderRadius:9,border:"0.5px solid var(--color-border-secondary)",overflow:"hidden"}}>
               <button
                 onClick={()=>setShowTips(t=>!t)}
-                style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"var(--color-background-secondary)",border:"none",cursor:"pointer",textAlign:"left",gap:8}}
+                style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"var(--color-background-secondary)",border:"none",cursor:"pointer",textAlign:"left",gap:8,fontFamily:"var(--font-sans)"}}
               >
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -672,11 +711,11 @@ Prioriteiten:
               {showTips && (
                 <div style={{padding:"12px 14px 14px",background:"var(--color-background-primary)",borderTop:"0.5px solid var(--color-border-secondary)",display:"flex",flexDirection:"column",gap:9}}>
                   {[
-                    { icon:"👤", title:"Vermeld uzelf", text:'Begin met uw naam en functie \u2014 bijv. "Ik ben Sarah, apothekersassistente." Zo weten we wie we moeten contacteren voor opvolging.' },
-                    { icon:"📍", title:"Geef de locatie aan", text:'Zeg waar het probleem zich bevindt \u2014 "in de stockageruimte", "aan de toonbank", "bij de ingang". Hoe concreter, hoe sneller we kunnen ingrijpen.' },
+                    { icon:"👤", title:"Vermeld uzelf", text:'Begin met uw naam en functie — bijv. "Ik ben Sarah, apothekersassistente." Zo weten we wie we moeten contacteren voor opvolging.' },
+                    { icon:"📍", title:"Geef de locatie aan", text:'Zeg waar het probleem zich bevindt — "in de stockageruimte", "aan de toonbank", "bij de ingang". Hoe concreter, hoe sneller we kunnen ingrijpen.' },
                     { icon:"🔍", title:"Wees specifiek", text:'Beschrijf wat er precies misgaat: foutmeldingen, symptomen, hoe lang al, of het alle medewerkers treft. Meer detail = snellere oplossing.' },
-                    { icon:"🚨", title:"Geef urgentie aan", text:'Als de apotheek geblokkeerd is, de koeling faalt of betalingen niet werken \u2014 zeg dit expliciet. Het systeem markeert dit automatisch als Business Critical.' },
-                    { icon:"📋", title:"Meerdere problemen? Geen probleem", text:'U kunt in één opname meerdere issues melden \u2014 bijv. een IT-probleem én een facilitaire kwestie. Claude maakt automatisch aparte tickets aan.' },
+                    { icon:"🚨", title:"Geef urgentie aan", text:'Als de apotheek geblokkeerd is, de koeling faalt of betalingen niet werken — zeg dit expliciet. Het systeem markeert dit automatisch als Business Critical.' },
+                    { icon:"📋", title:"Meerdere problemen?", text:'U kunt in één opname meerdere issues melden — bijv. een IT-probleem én een facilitaire kwestie. AI maakt automatisch aparte tickets aan.' },
                   ].map(({icon,title,text})=>(
                     <div key={title} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
                       <span style={{fontSize:16,flexShrink:0,lineHeight:"20px"}}>{icon}</span>
