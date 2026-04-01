@@ -866,8 +866,14 @@ Prioriteiten:
 
         {/* ── CREATING ── */}
         {stage === STAGE.CREATING && (
-          <div className="hfade" style={{textAlign:"center",padding:"80px 0"}}>
-            <Spinner size={36} /><div style={{fontSize:14,fontWeight:500,marginTop:16}}>Jira ticket wordt aangemaakt…</div>
+          <div className="hfade select-layout">
+            <BrandingPanel />
+            <div className="select-right">
+              <div style={{maxWidth:520,width:"100%",margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,gap:16,padding:"60px 0"}}>
+                <Spinner size={36} />
+                <div style={{fontSize:14,fontWeight:500,color:"var(--color-text-secondary)"}}>Jira ticket wordt aangemaakt…</div>
+              </div>
+            </div>
           </div>
         )}
 
