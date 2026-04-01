@@ -896,7 +896,7 @@ Prioriteiten:
                 <CriticalAlertIcon size={28} />
                 <div>
                   <div style={{fontSize:14,fontWeight:800,color:"#fff",fontFamily:"Arial,Helvetica,sans-serif"}}>Business Critical support request</div>
-                  <div style={{fontSize:12,color:"#FFE4E8",marginTop:2}}>Support team is op de hoogte gebracht — contacteer de apotheek telefonisch.</div>
+                  <div style={{fontSize:12,color:"#FFE4E8",marginTop:2}}>Het support team is op de hoogte gebracht en behandelt uw melding met hoogste prioriteit.</div>
                 </div>
               </div>
             )}
