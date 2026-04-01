@@ -353,9 +353,12 @@ export default function HealisApp() {
   const processIssue = useCallback(async () => {
     if (!inputText.trim()) return;
     setStage(STAGE.PROCESSING); setAppError(null);
-    setProcessingMsg("Claude analyseert uw melding…");
-    try {
-      const res = await fetch("/api/anthropic", {
+    setProcessingMsg("AI analyseert uw melding…");
+    const MAX_RETRIES = 3;
+    let lastErr;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+    const res = await fetch("/api/anthropic", {
         method:"POST", headers:API_HEADERS,
         body: JSON.stringify({
           model:"claude-sonnet-4-6", max_tokens:1800,
@@ -400,7 +403,16 @@ Prioriteiten:
         })
       });
       const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
+      if (data.error) {
+        const isOverloaded = res.status === 529 || data.error?.type === "overloaded_error";
+        if (isOverloaded && attempt < MAX_RETRIES) {
+          setProcessingMsg(`AI is even druk, opnieuw proberen… (${attempt}/${MAX_RETRIES})`);
+          await new Promise(r => setTimeout(r, 2000 * attempt));
+          lastErr = new Error("AI tijdelijk overbelast. Probeer het over een moment opnieuw.");
+          continue;
+        }
+        throw new Error(isOverloaded ? "AI tijdelijk overbelast. Probeer het over een moment opnieuw." : data.error.message);
+      }
       let extracted;
       try {
         const raw = (data.content?.[0]?.text || "[]").replace(/```json|```/g,"").trim();
@@ -421,7 +433,10 @@ Prioriteiten:
       setTicketDrafts(extracted);
       setEditModes({});
       setStage(STAGE.REVIEW);
-    } catch(err) { setAppError(err.message); setStage(STAGE.IDLE); }
+      return;
+      } catch(err) { lastErr = err; if (attempt < MAX_RETRIES) { setProcessingMsg(`Fout, opnieuw proberen… (${attempt}/${MAX_RETRIES})`); await new Promise(r => setTimeout(r, 1500)); } }
+    }
+    setAppError(lastErr?.message || "Onbekende fout."); setStage(STAGE.IDLE);
   }, [inputText, matchedPharmacy]);
 
   // ── JIRA CREATION ─────────────────────────────────────────────────────────
