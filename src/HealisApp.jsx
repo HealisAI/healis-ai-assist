@@ -313,9 +313,8 @@ export default function HealisApp() {
   const [showTextInput,   setShowTextInput]   = useState(false);
   const [recSeconds,      setRecSeconds]      = useState(0);
 
-  const srRef         = useRef(null);
-  const timerRef      = useRef(null);
-  const isRecordingRef = useRef(false);
+  const srRef    = useRef(null);
+  const timerRef = useRef(null);
 
   useEffect(() => () => { clearInterval(timerRef.current); srRef.current?.stop(); }, []);
 
@@ -326,48 +325,26 @@ export default function HealisApp() {
     setAppError(null);
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setAppError("Spraakherkenning niet ondersteund. Gebruik Chrome."); return; }
-
-    // iOS Safari doesn't support continuous mode — auto-restart instead
-    const iosOrSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (/^((?!chrome|android).)*safari/i.test(navigator.userAgent));
-
-    const launchSR = () => {
-      const sr = new SR();
-      sr.lang = "nl-BE"; sr.continuous = !iosOrSafari; sr.interimResults = false;
-      sr.onresult = e => {
-        let chunk = "";
-        for (let i = e.resultIndex; i < e.results.length; i++)
-          if (e.results[i].isFinal) chunk += e.results[i][0].transcript + " ";
-        if (chunk) setInputText(prev => prev ? `${prev}${chunk}` : chunk);
-      };
-      sr.onerror = e => {
-        if (e.error === "not-allowed") {
-          setAppError("Microfoon geweigerd. Sta toegang toe via het slotje in de adresbalk.");
-          isRecordingRef.current = false; clearInterval(timerRef.current); setStage(STAGE.IDLE);
-        } else if (e.error !== "aborted" && e.error !== "no-speech") {
-          setAppError(`Spraakherkenning fout: ${e.error}`);
-        }
-      };
-      sr.onend = () => {
-        if (iosOrSafari && isRecordingRef.current) {
-          srRef.current = launchSR(); // restart to simulate continuous on iOS
-        } else {
-          clearInterval(timerRef.current);
-          setStage(s => s === STAGE.RECORDING ? STAGE.IDLE : s);
-        }
-      };
-      sr.start();
-      return sr;
+    const sr = new SR();
+    sr.lang = "nl-BE"; sr.continuous = true; sr.interimResults = false;
+    sr.onresult = e => {
+      let chunk = "";
+      for (let i = e.resultIndex; i < e.results.length; i++)
+        if (e.results[i].isFinal) chunk += e.results[i][0].transcript + " ";
+      if (chunk) setInputText(prev => prev ? `${prev}${chunk}` : chunk);
     };
-
-    isRecordingRef.current = true;
-    srRef.current = launchSR();
+    sr.onerror = e => {
+      if (e.error === "not-allowed") setAppError("Microfoon geweigerd. Sta toegang toe via het slotje in de adresbalk.");
+      else if (e.error !== "aborted") setAppError(`Spraakherkenning fout: ${e.error}`);
+      clearInterval(timerRef.current); setStage(STAGE.IDLE);
+    };
+    sr.onend = () => { clearInterval(timerRef.current); setStage(s => s === STAGE.RECORDING ? STAGE.IDLE : s); };
+    sr.start(); srRef.current = sr;
     setRecSeconds(0); setStage(STAGE.RECORDING);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
   }, []);
 
   const stopRecording = useCallback(() => {
-    isRecordingRef.current = false;
     clearInterval(timerRef.current); srRef.current?.stop(); srRef.current = null; setStage(STAGE.IDLE);
   }, []);
 
