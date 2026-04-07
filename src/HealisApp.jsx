@@ -75,7 +75,7 @@ const HR_MEDEWERKER_MAP  = { Onboarding:"Onboarding & offboarding", Loon:"Loon, 
 const KLACHT_MAP         = { Service:"Service & wachttijd", Medicatie:"Medicatie & advies", Prijs:"Prijs & terugbetaling", Voorraad:"Voorraad & bestelling", Privacy:"Privacy & administratie", Andere:"Andere" };
 
 // ── STAGE & CATEGORY META ─────────────────────────────────────────────────────
-const STAGE = { SELECT:"select", IDLE:"idle", RECORDING:"recording", PROCESSING:"processing", REVIEW:"review", CREATING:"creating", DONE:"done" };
+const STAGE = { SELECT:"select", IDLE:"idle", RECORDING:"recording", TRANSCRIBING:"transcribing", PROCESSING:"processing", REVIEW:"review", CREATING:"creating", DONE:"done" };
 
 const CAT_META = {
   IT:           { label:"IT Support",         color:"#E8F5EC", tx:"#008624", br:"#7AC483", project:"IT",  issueType:"Support" },
@@ -338,14 +338,14 @@ export default function HealisApp() {
       else if (e.error !== "aborted") setAppError(`Spraakherkenning fout: ${e.error}`);
       clearInterval(timerRef.current); setStage(STAGE.IDLE);
     };
-    sr.onend = () => { clearInterval(timerRef.current); setStage(s => s === STAGE.RECORDING ? STAGE.IDLE : s); };
+    sr.onend = () => { clearInterval(timerRef.current); setStage(s => [STAGE.RECORDING, STAGE.TRANSCRIBING].includes(s) ? STAGE.IDLE : s); };
     sr.start(); srRef.current = sr;
     setRecSeconds(0); setStage(STAGE.RECORDING);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
   }, []);
 
   const stopRecording = useCallback(() => {
-    clearInterval(timerRef.current); srRef.current?.stop(); srRef.current = null; setStage(STAGE.IDLE);
+    clearInterval(timerRef.current); setStage(STAGE.TRANSCRIBING); srRef.current?.stop(); srRef.current = null;
   }, []);
 
   // ── AI EXTRACTION ─────────────────────────────────────────────────────────
@@ -475,7 +475,7 @@ Prioriteiten:
   const filteredPharma = PHARMACIES.filter(p =>
     !pharmSearch || `${p.alias} ${p.name} ${p.city}`.toLowerCase().includes(pharmSearch.toLowerCase())
   );
-  const busy = [STAGE.RECORDING, STAGE.PROCESSING, STAGE.CREATING].includes(stage);
+  const busy = [STAGE.RECORDING, STAGE.TRANSCRIBING, STAGE.PROCESSING, STAGE.CREATING].includes(stage);
   const isBC = ticketDrafts.some(d => d.priority === "Business Critical");
 
   return (
@@ -599,8 +599,8 @@ Prioriteiten:
           </div>
         )}
 
-        {/* ── MELD EEN PROBLEEM (IDLE / RECORDING / PROCESSING) ── */}
-        {[STAGE.IDLE, STAGE.RECORDING, STAGE.PROCESSING].includes(stage) && (
+        {/* ── MELD EEN PROBLEEM (IDLE / RECORDING / TRANSCRIBING / PROCESSING) ── */}
+        {[STAGE.IDLE, STAGE.RECORDING, STAGE.TRANSCRIBING, STAGE.PROCESSING].includes(stage) && (
           <div className="hfade select-layout">
           <BrandingPanel />
           <div className="select-right"><div style={{maxWidth:520,width:"100%",margin:"0 auto",display:"flex",flexDirection:"column",gap:14,alignItems:"center"}}>
@@ -644,6 +644,14 @@ Prioriteiten:
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                   Liever typen
                 </button>
+              </div>
+            )}
+
+            {/* ── TRANSCRIBING (waiting for final SR result after stop) ── */}
+            {stage === STAGE.TRANSCRIBING && (
+              <div style={{textAlign:"center",padding:"40px 0 20px"}}>
+                <Spinner size={34} />
+                <div style={{fontSize:14,color:"var(--color-text-secondary)",marginTop:16}}>Opname verwerken…</div>
               </div>
             )}
 
