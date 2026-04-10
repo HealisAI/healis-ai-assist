@@ -37,15 +37,48 @@ const PHARMACIES = [
   { alias:"AZU", name:"Apotheek Martens",            city:"Zutendaal",           phone:"089/61 16 74", email:"apotheek.thoen@healis.be",            province:"Limburg",         apb:"APB 716701" },
 ];
 
-function matchPharmacy(text) {
+function matchPharmacy(text, list = PHARMACIES) {
   if (!text) return null;
   const t = text.toLowerCase();
   return (
-    PHARMACIES.find(p => t.includes(p.alias.toLowerCase())) ||
-    PHARMACIES.find(p => p.name.toLowerCase().split(" ").filter(w => w.length > 3).some(w => t.includes(w))) ||
-    PHARMACIES.find(p => { const c = p.city.toLowerCase().replace(/\d+\s*/g,"").trim(); return c.length > 3 && t.includes(c); }) ||
+    list.find(p => t.includes(p.alias.toLowerCase())) ||
+    list.find(p => p.name.toLowerCase().split(" ").filter(w => w.length > 3).some(w => t.includes(w))) ||
+    list.find(p => { const c = p.city.toLowerCase().replace(/\d+\s*/g,"").trim(); return c.length > 3 && t.includes(c); }) ||
     null
   );
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function formatSyncAge(ts) {
+  if (!ts) return "";
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1)  return "zojuist";
+  if (mins < 60) return `${mins} min geleden`;
+  const hrs = Math.floor(mins / 60);
+  return hrs === 1 ? "1 uur geleden" : `${hrs} uur geleden`;
+}
+
+function buildAIPharmacyContext(pharmacy, inputText) {
+  if (!pharmacy) return inputText;
+  const lines = [];
+  if (pharmacy.robot?.type) {
+    let r = `Robot: ${pharmacy.robot.type}`;
+    if (pharmacy.robot.leverancier) r += ` (leverancier: ${pharmacy.robot.leverancier}${pharmacy.robot.telefoon ? `, tel: ${pharmacy.robot.telefoon}` : ""})`;
+    lines.push(r);
+  }
+  if (pharmacy.leveranciers) {
+    for (const [type, c] of Object.entries(pharmacy.leveranciers)) {
+      if (c.naam || c.telefoon) {
+        const label = type.charAt(0).toUpperCase() + type.slice(1);
+        lines.push(`${label}: ${c.naam || ""}${c.telefoon ? ` (${c.telefoon})` : ""}`.trim());
+      }
+    }
+  }
+  if (pharmacy.extra) {
+    for (const [k, v] of Object.entries(pharmacy.extra)) lines.push(`${k}: ${v}`);
+  }
+  if (!lines.length) return inputText;
+  return `[Apotheek-specifieke info ${pharmacy.alias}:\n${lines.join("\n")}]\n\n${inputText}`;
 }
 
 // ── JIRA OPTION MAPS ──────────────────────────────────────────────────────────
@@ -242,6 +275,36 @@ function buildJiraFields(d, p, inputText) {
   const mkPara = t => ({ type:"paragraph", content:[{ type:"text", text:String(t) }] });
   const mkHeading = (t, level=3) => ({ type:"heading", attrs:{ level }, content:[{ type:"text", text:t }] });
   const subDisplay = getSubcategoryDisplay(d);
+
+  // Build pharmacy-specific context lines based on category + keywords
+  const contextLines = [];
+  if (p) {
+    const mention = `${d.summary || ""} ${d.symptomen || ""}`.toLowerCase();
+    const isRobot   = /robot|automati/i.test(mention);
+    const isElec    = /elektric|stroom|zekering|bedrading/i.test(mention);
+    const isWater   = /water|lekkage|loodgieter|sanitair/i.test(mention);
+    const isIT      = d.category === "IT";
+    const isGebouw  = d.category === "Gebouwbeheer";
+
+    if (p.robot?.type && (isIT || isRobot)) {
+      let r = `Robot: ${p.robot.type}`;
+      if (p.robot.leverancier) r += ` — leverancier: ${p.robot.leverancier}${p.robot.telefoon ? ` (${p.robot.telefoon})` : ""}`;
+      contextLines.push(r);
+    }
+    if (isIT && p.leveranciers?.it) {
+      const it = p.leveranciers.it;
+      contextLines.push(`IT Support: ${it.naam || "—"}${it.telefoon ? ` — ${it.telefoon}` : ""}`);
+    }
+    if ((isGebouw || isElec) && p.leveranciers?.elektricien) {
+      const e = p.leveranciers.elektricien;
+      contextLines.push(`Elektricien: ${e.naam || "—"}${e.telefoon ? ` — ${e.telefoon}` : ""}`);
+    }
+    if ((isGebouw || isWater) && p.leveranciers?.loodgieter) {
+      const l = p.leveranciers.loodgieter;
+      contextLines.push(`Loodgieter: ${l.naam || "—"}${l.telefoon ? ` — ${l.telefoon}` : ""}`);
+    }
+  }
+
   const description = {
     type:"doc", version:1,
     content:[
@@ -258,6 +321,7 @@ function buildJiraFields(d, p, inputText) {
       ...(d.foutcode ? [mkPara(`Foutcode: ${d.foutcode}`)] : []),
       mkHeading("✅ Gewenste actie"),
       mkPara(d.gewenste_actie || "Zie beschrijving"),
+      ...(contextLines.length ? [mkHeading("🏪 Apotheek-specifieke context"), ...contextLines.map(mkPara)] : []),
       mkHeading("📝 Originele melding"),
       mkPara(inputText),
       mkPara(`Healis AI · ${new Date().toLocaleString("nl-BE")} · confidence ${d.confidence != null ? Math.round(d.confidence*100)+"%" : "n/a"}`),
@@ -313,11 +377,49 @@ export default function HealisApp() {
   const [showTips,        setShowTips]        = useState(false);
   const [showTextInput,   setShowTextInput]   = useState(false);
   const [recSeconds,      setRecSeconds]      = useState(0);
+  const [pharmacies,      setPharmacies]      = useState(PHARMACIES);
+  const [pharmSyncTime,   setPharmSyncTime]   = useState(null);
+  const [pharmSyncLoading,setPharmSyncLoading]= useState(false);
 
   const srRef    = useRef(null);
   const timerRef = useRef(null);
 
   useEffect(() => () => { clearInterval(timerRef.current); srRef.current?.stop(); }, []);
+
+  // ── CONFLUENCE PHARMACY SYNC ──────────────────────────────────────────────
+  useEffect(() => {
+    const CACHE_KEY = "healis_pharmacies_cache";
+    const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+    const load = async () => {
+      // Use cached data immediately (even if stale) for fast render
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+        if (cached?.pharmacies?.length) {
+          setPharmacies(cached.pharmacies);
+          setPharmSyncTime(cached.fetchedAt);
+          if (Date.now() - cached.fetchedAt < CACHE_TTL) return; // fresh — skip API call
+        }
+      } catch {}
+      // Fetch fresh data from Confluence
+      setPharmSyncLoading(true);
+      try {
+        const res = await fetch("/api/pharmacies");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.pharmacies?.length) {
+          setPharmacies(data.pharmacies);
+          const now = Date.now();
+          setPharmSyncTime(now);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ pharmacies: data.pharmacies, fetchedAt: now }));
+        }
+      } catch {
+        // Silent fallback — cached or hard-coded list already in state
+      } finally {
+        setPharmSyncLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 
@@ -399,7 +501,7 @@ Prioriteiten:
   "gewenste_actie": "gevraagde actie",
   "confidence": 0.0
 }`,
-          messages:[{ role:"user", content:inputText }]
+          messages:[{ role:"user", content:buildAIPharmacyContext(matchedPharmacy, inputText) }]
         })
       });
       const data = await res.json();
@@ -428,7 +530,7 @@ Prioriteiten:
       } catch { throw new Error("AI parsing mislukt. Probeer opnieuw."); }
       await new Promise(r => setTimeout(r, 200));
       // Prefer the pre-selected pharmacy; otherwise detect from text
-      const detected = matchPharmacy(extracted[0]?.alias_hint || extracted[0]?.apotheek_hint || inputText);
+      const detected = matchPharmacy(extracted[0]?.alias_hint || extracted[0]?.apotheek_hint || inputText, pharmacies);
       setMatchedPharmacy(matchedPharmacy || detected);
       setTicketDrafts(extracted);
       setEditModes({});
@@ -437,7 +539,7 @@ Prioriteiten:
       } catch(err) { lastErr = err; if (attempt < MAX_RETRIES) { setProcessingMsg(`Fout, opnieuw proberen… (${attempt}/${MAX_RETRIES})`); await new Promise(r => setTimeout(r, 1500)); } }
     }
     setAppError(lastErr?.message || "Onbekende fout."); setStage(STAGE.IDLE);
-  }, [inputText, matchedPharmacy]);
+  }, [inputText, matchedPharmacy, pharmacies]);
 
   // ── JIRA CREATION ─────────────────────────────────────────────────────────
   const createTickets = useCallback(async () => {
@@ -470,10 +572,30 @@ Prioriteiten:
     setStage(STAGE.IDLE);
   };
 
-  const filteredPick = PHARMACIES.filter(p =>
+  const refreshPharmacies = useCallback(async () => {
+    localStorage.removeItem("healis_pharmacies_cache");
+    setPharmSyncLoading(true);
+    try {
+      const res = await fetch("/api/pharmacies");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.pharmacies?.length) {
+        setPharmacies(data.pharmacies);
+        const now = Date.now();
+        setPharmSyncTime(now);
+        localStorage.setItem("healis_pharmacies_cache", JSON.stringify({ pharmacies: data.pharmacies, fetchedAt: now }));
+      }
+    } catch {
+      // Silently keep existing list
+    } finally {
+      setPharmSyncLoading(false);
+    }
+  }, []);
+
+  const filteredPick = pharmacies.filter(p =>
     !pickSearch || `${p.alias} ${p.name} ${p.city}`.toLowerCase().includes(pickSearch.toLowerCase())
   );
-  const filteredPharma = PHARMACIES.filter(p =>
+  const filteredPharma = pharmacies.filter(p =>
     !pharmSearch || `${p.alias} ${p.name} ${p.city}`.toLowerCase().includes(pharmSearch.toLowerCase())
   );
   const busy = [STAGE.RECORDING, STAGE.TRANSCRIBING, STAGE.PROCESSING, STAGE.CREATING].includes(stage);
@@ -639,6 +761,23 @@ Prioriteiten:
                   <div style={{fontSize:18,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Selecteer uw apotheek</div>
                   <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
                     Kies uw apotheek zodat we uw melding automatisch kunnen koppelen.
+                  </div>
+                  {/* Confluence sync status */}
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}>
+                    {pharmSyncLoading ? (
+                      <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"var(--color-text-tertiary)"}}>
+                        <Spinner size={10} /> Lijst verversen via Confluence…
+                      </span>
+                    ) : pharmSyncTime ? (
+                      <>
+                        <span style={{fontSize:11,color:"var(--color-text-tertiary)"}}>Confluence sync: {formatSyncAge(pharmSyncTime)}</span>
+                        <button
+                          onClick={refreshPharmacies}
+                          title="Ververs apothekenlijst vanuit Confluence"
+                          style={{fontSize:12,color:"#008624",background:"none",border:"none",cursor:"pointer",padding:0,lineHeight:1}}
+                        >↻</button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
 
