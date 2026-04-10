@@ -41,9 +41,9 @@ function matchPharmacy(text, list = PHARMACIES) {
   if (!text) return null;
   const t = text.toLowerCase();
   return (
-    list.find(p => t.includes(p.alias.toLowerCase())) ||
-    list.find(p => p.name.toLowerCase().split(" ").filter(w => w.length > 3).some(w => t.includes(w))) ||
-    list.find(p => { const c = p.city.toLowerCase().replace(/\d+\s*/g,"").trim(); return c.length > 3 && t.includes(c); }) ||
+    list.find(p => p.alias && t.includes(p.alias.toLowerCase())) ||
+    list.find(p => p.name && p.name.toLowerCase().split(" ").filter(w => w.length > 3).some(w => t.includes(w))) ||
+    list.find(p => { if (!p.city) return false; const c = p.city.toLowerCase().replace(/\d+\s*/g,"").trim(); return c.length > 3 && t.includes(c); }) ||
     null
   );
 }
