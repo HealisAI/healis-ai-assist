@@ -49,6 +49,36 @@ function matchPharmacy(text, list = PHARMACIES) {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
+
+// Merge Confluence data onto the hard-coded list so basic fields (city, phone,
+// email, apb, province) always come from PHARMACIES, while Confluence-only
+// fields (robot, leveranciers, extra) are added on top.
+// New pharmacies only in Confluence (not yet hard-coded) are appended as-is.
+function mergePharmacyData(confluenceList) {
+  const enriched = PHARMACIES.map(base => {
+    const cp = confluenceList.find(c => c.alias === base.alias);
+    if (!cp) return base;
+    return {
+      ...base,
+      // Only override basic fields if Confluence actually has a value
+      name:     cp.name     || base.name,
+      city:     cp.city     || base.city,
+      phone:    cp.phone    || base.phone,
+      email:    cp.email    || base.email,
+      province: cp.province || base.province,
+      apb:      cp.apb      || base.apb,
+      // Confluence-specific enrichment fields
+      ...(cp.robot        ? { robot:        cp.robot }        : {}),
+      ...(cp.leveranciers ? { leveranciers: cp.leveranciers } : {}),
+      ...(cp.extra        ? { extra:        cp.extra }        : {}),
+    };
+  });
+  // Append pharmacies only in Confluence (not yet in hard-coded list)
+  const hardCodedAliases = new Set(PHARMACIES.map(p => p.alias));
+  const onlyInConfluence = confluenceList.filter(cp => !hardCodedAliases.has(cp.alias));
+  return [...enriched, ...onlyInConfluence];
+}
+
 function formatSyncAge(ts) {
   if (!ts) return "";
   const mins = Math.floor((Date.now() - ts) / 60000);
@@ -395,9 +425,15 @@ export default function HealisApp() {
       try {
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
         if (cached?.pharmacies?.length) {
-          setPharmacies(cached.pharmacies);
-          setPharmSyncTime(cached.fetchedAt);
-          if (Date.now() - cached.fetchedAt < CACHE_TTL) return; // fresh — skip API call
+          // Invalidate caches that pre-date the merge fix (missing city field)
+          const hasComplete = cached.pharmacies.some(p => p.city);
+          if (hasComplete) {
+            setPharmacies(cached.pharmacies);
+            setPharmSyncTime(cached.fetchedAt);
+            if (Date.now() - cached.fetchedAt < CACHE_TTL) return; // fresh — skip API call
+          } else {
+            localStorage.removeItem(CACHE_KEY); // stale pre-merge cache — force refresh
+          }
         }
       } catch {}
       // Fetch fresh data from Confluence
@@ -407,10 +443,11 @@ export default function HealisApp() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (data.pharmacies?.length) {
-          setPharmacies(data.pharmacies);
+          const merged = mergePharmacyData(data.pharmacies);
+          setPharmacies(merged);
           const now = Date.now();
           setPharmSyncTime(now);
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ pharmacies: data.pharmacies, fetchedAt: now }));
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ pharmacies: merged, fetchedAt: now }));
         }
       } catch {
         // Silent fallback — cached or hard-coded list already in state
@@ -580,10 +617,11 @@ Prioriteiten:
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.pharmacies?.length) {
-        setPharmacies(data.pharmacies);
+        const merged = mergePharmacyData(data.pharmacies);
+        setPharmacies(merged);
         const now = Date.now();
         setPharmSyncTime(now);
-        localStorage.setItem("healis_pharmacies_cache", JSON.stringify({ pharmacies: data.pharmacies, fetchedAt: now }));
+        localStorage.setItem("healis_pharmacies_cache", JSON.stringify({ pharmacies: merged, fetchedAt: now }));
       }
     } catch {
       // Silently keep existing list
