@@ -162,7 +162,7 @@ function BrandingPanel() {
           Samen sterk in zorg,<br/>persoonlijk en dichtbij.
         </div>
         <div style={{fontSize:13,color:"rgba(255,255,255,0.78)",lineHeight:1.75,marginBottom:32}}>
-          Meld een probleem via spraak of tekst. AI verwerkt uw melding en maakt automatisch de juiste tickets aan voor het betrokken team.
+          Meld een probleem, stel een vraag of zoek informatie op — via spraak of tekst. AI verwerkt uw melding en maakt automatisch de juiste tickets aan voor het betrokken team.
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:18,marginBottom:32}}>
           {[
