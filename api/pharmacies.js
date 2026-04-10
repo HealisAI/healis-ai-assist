@@ -1,39 +1,116 @@
 // ── Pharmacy sync endpoint ────────────────────────────────────────────────────
 // Fetches all pharmacy pages from Confluence (children of a single parent page),
-// parses their structured content, and returns a normalised pharmacy array.
-// Auth reuses JIRA_EMAIL + JIRA_API_TOKEN (same Atlassian Cloud instance).
+// parses their structured content section-by-section, and returns a normalised
+// pharmacy array.  Auth reuses JIRA_EMAIL + JIRA_API_TOKEN (same Atlassian Cloud).
+
+// ── HTML utilities ────────────────────────────────────────────────────────────
 
 function stripHtml(str) {
   return str
     .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#\d+;/g, '')
-    .replace(/\s+/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, '').replace(/\s+/g, ' ')
     .trim()
 }
 
-// Extract [key, value] pairs from <th>...</th><td>...</td> table rows
-function extractKeyValuePairs(html) {
+// Extract [key, value] from a single <tr> — handles both <th><td> and <td><td>
+function extractKVFromRow(rowHtml) {
+  const cellRegex = /<(th|td)[^>]*>([\s\S]*?)<\/\1>/gi
+  const cells = []
+  let m
+  while ((m = cellRegex.exec(rowHtml)) !== null) {
+    cells.push({ tag: m[1].toLowerCase(), text: stripHtml(m[2]) })
+  }
+  if (cells.length !== 2) return null                          // skip header/complex rows
+  if (cells[0].tag === 'th' && cells[1].tag === 'th') return null  // skip table headers
+  if (!cells[0].text || !cells[1].text) return null            // skip empty rows
+  return [cells[0].text, cells[1].text]
+}
+
+// Extract all key-value pairs from all tables inside an HTML string
+function extractKVPairsFromHtml(html) {
   const pairs = []
   const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi
-  let rowMatch
-  while ((rowMatch = rowRegex.exec(html)) !== null) {
-    const row = rowMatch[1]
-    const thMatch = /<th[^>]*>([\s\S]*?)<\/th>/i.exec(row)
-    const tdMatch = /<td[^>]*>([\s\S]*?)<\/td>/i.exec(row)
-    if (thMatch && tdMatch) {
-      const key = stripHtml(thMatch[1])
-      const value = stripHtml(tdMatch[1])
-      if (key && value) pairs.push([key, value])
-    }
+  let rm
+  while ((rm = rowRegex.exec(html)) !== null) {
+    const kv = extractKVFromRow(rm[1])
+    if (kv) pairs.push(kv)
   }
   return pairs
 }
 
-// Split "Jan Pieters, 053/77 74 60" into { naam, telefoon }
+// Split page HTML into [{heading, html}] sections by h1–h4 tags
+function splitIntoSections(html) {
+  const sections = []
+  const headingRegex = /<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/gi
+  const headings = []
+  let hm
+  while ((hm = headingRegex.exec(html)) !== null) {
+    headings.push({ text: stripHtml(hm[1]), end: headingRegex.lastIndex })
+  }
+
+  if (!headings.length) return [{ heading: '_root', html }]
+
+  // Content before first heading
+  if (headings[0].end - headings[0].text.length > 0) {
+    const pre = html.slice(0, html.indexOf('<h'))
+    if (pre.trim()) sections.push({ heading: '_root', html: pre })
+  }
+  for (let i = 0; i < headings.length; i++) {
+    const nextStart = headings[i + 1] ? html.indexOf('<h', headings[i].end) : html.length
+    sections.push({ heading: headings[i].text, html: html.slice(headings[i].end, nextStart < 0 ? html.length : nextStart) })
+  }
+  return sections
+}
+
+// Classify a section heading into a parser context
+function classifySection(heading) {
+  const h = heading.toLowerCase()
+  if (h === '_root') return 'basic'
+  if (/contact|apotheek.?info|basis|algemeen|gegevens|identificat/.test(h)) return 'basic'
+  if (/robot|automati|dispenseer|dispensing/.test(h)) return 'robot'
+  if (/leverancier|partner|lokale.?contact|techni/.test(h)) return 'leveranciers'
+  return 'extra'
+}
+
+// Map a key to a basic pharmacy field name (returns null if not a basic field)
+function mapBasicKey(key) {
+  const k = key.toLowerCase().replace(/\s+/g, ' ').trim()
+  if (/^(alias|code|afkorting)$/.test(k))                              return 'alias'
+  if (/^(naam|name|apotheek naam)$/.test(k))                           return 'name'
+  if (/^(stad|gemeente|city|locatie)$/.test(k))                        return 'city'
+  if (/^(telefoon|tel\.?|phone|gsm|tel apotheek|telefoon apotheek)$/.test(k)) return 'phone'
+  if (/^(e-?mail|email apotheek)$/.test(k))                            return 'email'
+  if (/^(provincie|province)$/.test(k))                                return 'province'
+  if (/^apb/.test(k))                                                   return 'apb'
+  return null
+}
+
+// Map a key to a robot sub-field
+function mapRobotKey(key) {
+  const k = key.toLowerCase().trim()
+  if (/type|model|naam|robot|apparaat|merk/.test(k)) return 'type'
+  if (/leverancier|fabrikant|vendor|firma/.test(k))  return 'leverancier'
+  if (/telefoon|tel|phone/.test(k))                  return 'telefoon'
+  if (/e-?mail/.test(k))                             return 'email'
+  if (/contact/.test(k))                             return 'contact'
+  return k.toLowerCase().replace(/[^a-z0-9]/g, '_')
+}
+
+// Map a key to a supplier type identifier
+function mapLeverancierKey(key) {
+  const k = key.toLowerCase().trim()
+  if (/elektricien|electricien/.test(k))     return 'elektricien'
+  if (/loodgieter|sanitair|installateur/.test(k)) return 'loodgieter'
+  if (/^(it\b|it[-\s]support|helpdesk|informatica)/.test(k)) return 'it'
+  if (/airco|hvac|verwarming|koeling/.test(k)) return 'airco'
+  if (/alarm|beveiliging/.test(k))           return 'alarm'
+  if (/schilder/.test(k))                    return 'schilder'
+  if (/lift|elevator/.test(k))               return 'lift'
+  return k.replace(/[^a-z0-9]/g, '_')
+}
+
+// Try to split "Naam Voornaam, 012/34 56 78" into { naam, telefoon }
 function parseContactValue(value) {
   const phoneRegex = /(\b[\d\s\/\.\-]{8,}\b)/
   const match = value.match(phoneRegex)
@@ -45,102 +122,100 @@ function parseContactValue(value) {
   return { naam: value }
 }
 
+// ── Main page parser ──────────────────────────────────────────────────────────
+
 function parsePharmacyPage(title, bodyStorage) {
-  const pairs = extractKeyValuePairs(bodyStorage)
   const pharmacy = {}
 
-  // Try to extract alias and name from page title "AAA - Apotheek Name"
-  const titleAliasMatch = title.match(/^([A-Z]{3})\s*[-–—]\s*(.+)$/i)
-  if (titleAliasMatch) {
-    pharmacy.alias = titleAliasMatch[1].toUpperCase()
-    pharmacy.name = titleAliasMatch[2].trim()
+  // Derive alias + name from page title  "AAR — Apotheek Van De Vel"
+  const titleMatch = title.match(/^([A-Z]{3})\s*[-–—]\s*(.+)$/i)
+  if (titleMatch) {
+    pharmacy.alias = titleMatch[1].toUpperCase()
+    pharmacy.name = titleMatch[2].trim()
   } else {
     pharmacy.name = title
   }
 
-  for (const [rawKey, value] of pairs) {
-    const key = rawKey.toLowerCase().trim()
+  const sections = splitIntoSections(bodyStorage)
 
-    if (/^(alias|code|afkorting)$/.test(key)) {
-      pharmacy.alias = value.toUpperCase()
-    } else if (/^(naam|name)$/.test(key)) {
-      pharmacy.name = value
-    } else if (/^(stad|gemeente|city)$/.test(key)) {
-      pharmacy.city = value
-    } else if (/^(telefoon|tel\.?|phone|gsm)$/.test(key)) {
-      pharmacy.phone = value
-    } else if (/^email$/.test(key)) {
-      pharmacy.email = value.toLowerCase()
-    } else if (/^(provincie|province)$/.test(key)) {
-      pharmacy.province = value
-    } else if (/^apb/.test(key)) {
-      pharmacy.apb = value
-    } else if (/robot/.test(key)) {
-      if (!pharmacy.robot) pharmacy.robot = {}
-      if (/type|model/.test(key))         pharmacy.robot.type = value
-      else if (/leverancier/.test(key))   pharmacy.robot.leverancier = value
-      else if (/telefoon|tel/.test(key))  pharmacy.robot.telefoon = value
-      else if (!pharmacy.robot.type)      pharmacy.robot.type = value
-      else                                pharmacy.robot[rawKey] = value
-    } else if (/elektricien|electricien/.test(key)) {
-      if (!pharmacy.leveranciers) pharmacy.leveranciers = {}
-      pharmacy.leveranciers.elektricien = parseContactValue(value)
-    } else if (/loodgieter|sanitair/.test(key)) {
-      if (!pharmacy.leveranciers) pharmacy.leveranciers = {}
-      pharmacy.leveranciers.loodgieter = parseContactValue(value)
-    } else if (/^(it\b|it[-\s]support|helpdesk|informatica)/.test(key)) {
-      if (!pharmacy.leveranciers) pharmacy.leveranciers = {}
-      pharmacy.leveranciers.it = parseContactValue(value)
-    } else {
-      if (!pharmacy.extra) pharmacy.extra = {}
-      pharmacy.extra[rawKey] = value
+  for (const { heading, html: sHtml } of sections) {
+    const ctx = classifySection(heading)
+    const pairs = extractKVPairsFromHtml(sHtml)
+
+    for (const [rawKey, value] of pairs) {
+      if (ctx === 'basic') {
+        const field = mapBasicKey(rawKey)
+        if (field) {
+          if (field === 'alias') pharmacy.alias = value.toUpperCase()
+          else pharmacy[field] = value
+        } else {
+          // Unknown key in basic section → extra
+          if (!pharmacy.extra) pharmacy.extra = {}
+          pharmacy.extra[rawKey] = value
+        }
+
+      } else if (ctx === 'robot') {
+        if (!pharmacy.robot) pharmacy.robot = {}
+        pharmacy.robot[mapRobotKey(rawKey)] = value
+
+      } else if (ctx === 'leveranciers') {
+        if (!pharmacy.leveranciers) pharmacy.leveranciers = {}
+        const sType = mapLeverancierKey(rawKey)
+        pharmacy.leveranciers[sType] = parseContactValue(value)
+
+      } else {
+        // 'extra' section — group by heading
+        if (!pharmacy.extra) pharmacy.extra = {}
+        const eKey = heading !== '_root' ? `${heading} — ${rawKey}` : rawKey
+        pharmacy.extra[eKey] = value
+      }
     }
   }
 
   return pharmacy
 }
 
-async function resolveParentPageId(base, creds, shortlink) {
-  // If CONFLUENCE_PHARMACY_PAGE_ID is set directly, use it
-  if (process.env.CONFLUENCE_PHARMACY_PAGE_ID) {
-    return process.env.CONFLUENCE_PHARMACY_PAGE_ID
-  }
+// ── Tiny-link / page ID resolution ───────────────────────────────────────────
 
-  // Resolve the tiny link — try following the redirect to extract the page ID
-  const url = `${base}/wiki/x/${shortlink}`
+async function resolveParentPageId(base, creds) {
+  // Explicit override via env var
+  if (process.env.CONFLUENCE_PHARMACY_PAGE_ID) return process.env.CONFLUENCE_PHARMACY_PAGE_ID
+
+  // Known page ID for healis.atlassian.net (parent page "Apotheken — Overzicht")
+  const KNOWN_ID = '32276481'
+  const shortlink = process.env.CONFLUENCE_PHARMACY_SHORTLINK || 'AYDsAQ'
+
+  // Try to resolve the tiny link dynamically (confirms the ID is still valid)
   try {
-    const res = await fetch(url, {
+    const r1 = await fetch(`${base}/wiki/x/${shortlink}`, {
       headers: { 'Authorization': `Basic ${creds}`, 'Accept': 'text/html' },
       redirect: 'follow',
     })
-    const pageMatch = res.url.match(/\/pages\/(\d+)/)
-    if (pageMatch) return pageMatch[1]
+    const m = r1.url.match(/\/pages\/(\d+)/)
+    if (m) return m[1]
   } catch {}
 
-  // Fallback: manual redirect
   try {
-    const res = await fetch(`${base}/wiki/x/${shortlink}`, {
+    const r2 = await fetch(`${base}/wiki/x/${shortlink}`, {
       headers: { 'Authorization': `Basic ${creds}` },
       redirect: 'manual',
     })
-    const location = res.headers.get('location') || ''
-    const locMatch = location.match(/\/pages\/(\d+)/)
-    if (locMatch) return locMatch[1]
+    const loc = r2.headers.get('location') || ''
+    const m = loc.match(/\/pages\/(\d+)/)
+    if (m) return m[1]
   } catch {}
 
-  return null
+  return KNOWN_ID  // fallback to hardcoded known ID
 }
+
+// ── Vercel handler ────────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
   const base = process.env.JIRA_BASE_URL || 'https://healis.atlassian.net'
   const creds = Buffer.from(`${process.env.JIRA_EMAIL}:${process.env.JIRA_API_TOKEN}`).toString('base64')
-  const shortlink = process.env.CONFLUENCE_PHARMACY_SHORTLINK || 'AYDsAQ'
 
   try {
-    const parentPageId = await resolveParentPageId(base, creds, shortlink)
-    if (!parentPageId) {
-      return res.status(500).json({ error: 'Could not resolve Confluence parent page ID. Set CONFLUENCE_PHARMACY_PAGE_ID to override.' })
-    }
+    const parentPageId = await resolveParentPageId(base, creds)
 
     const childRes = await fetch(
       `${base}/wiki/rest/api/content/${parentPageId}/child/page?limit=100&expand=body.storage,title`,
@@ -157,7 +232,7 @@ module.exports = async function handler(req, res) {
 
     const pharmacies = pages
       .map(page => parsePharmacyPage(page.title, page.body?.storage?.value || ''))
-      .filter(p => p.alias) // Only include pages with a resolvable alias
+      .filter(p => p.alias)
 
     res.status(200).json({ pharmacies, fetchedAt: Date.now(), total: pharmacies.length })
   } catch (err) {
