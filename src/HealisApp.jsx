@@ -283,6 +283,65 @@ function AppFooter() {
   );
 }
 
+// ── PHARMACY CONTEXT COLLECTOR ────────────────────────────────────────────────
+function collectPharmacyContext(d, p) {
+  if (!p) return [];
+  const mention = [d.summary, d.symptomen, d.subcategory_gebouw, d.subcategory_apotheek]
+    .filter(Boolean).join(' ').toLowerCase();
+  const lines = [];
+
+  const isRobot   = /robot|automat|dispenseer|dispensing/i.test(mention);
+  const isKoeling = /koel|bevrie|fridge|koelkast|koelmeubel/i.test(mention) || d.subcategory_apotheek === 'Koelmeubels';
+  const isElec    = /elektric|stroom|zekering|bedrading|stopcontact/i.test(mention) || d.subcategory_gebouw === 'Elektriciteit';
+  const isWater   = /water|lekkage|loodgieter|sanitair|vocht/i.test(mention) || d.subcategory_gebouw === 'Water';
+  const isAlarm   = /alarm|beveilig|camera/i.test(mention) || d.subcategory_gebouw === 'Alarm';
+  const isAirco   = /airco|hvac|verwarm|ventilat/i.test(mention) || d.subcategory_gebouw === 'Verwarming';
+  const isIT      = d.category === 'IT';
+
+  // Robot — dump all sub-fields when relevant
+  if (p.robot && Object.keys(p.robot).length && (isRobot || isIT)) {
+    lines.push('Robot / Automaat:');
+    for (const [k, v] of Object.entries(p.robot)) {
+      if (v) lines.push(`  ${k}: ${v}`);
+    }
+  }
+
+  // Leveranciers — per detected topic
+  const addL = (key, label) => {
+    const c = p.leveranciers?.[key];
+    if (c) lines.push(`${label}: ${c.naam || '—'}${c.telefoon ? ` — ${c.telefoon}` : ''}`);
+  };
+  if (isIT)      addL('it',          'IT Support');
+  if (isElec)    addL('elektricien', 'Elektricien');
+  if (isWater)   addL('loodgieter',  'Loodgieter');
+  if (isAlarm)   addL('alarm',       'Alarm/beveiliging');
+  if (isAirco)   addL('airco',       'Airco/HVAC');
+
+  // Scan p.extra for keys matching detected topics
+  if (p.extra) {
+    const matchers = [
+      ...(isRobot   ? [/robot|automat|dispenseer/i]       : []),
+      ...(isKoeling ? [/koel|bevrie|fridge/i]             : []),
+      ...(isElec    ? [/elektric|stroom/i]                : []),
+      ...(isWater   ? [/water|lekkage|sanitair/i]         : []),
+      ...(isAlarm   ? [/alarm|beveilig/i]                 : []),
+      ...(isAirco   ? [/airco|hvac|verwarm|ventilat/i]    : []),
+      ...(isIT      ? [/\bit\b|it[-\s]support|helpdesk/i] : []),
+    ];
+    if (matchers.length) {
+      const extraMatched = Object.entries(p.extra)
+        .filter(([k]) => matchers.some(rx => rx.test(k)))
+        .map(([k, v]) => `${k}: ${v}`);
+      if (extraMatched.length) {
+        lines.push('Extra info uit Confluence:');
+        lines.push(...extraMatched);
+      }
+    }
+  }
+
+  return lines;
+}
+
 // ── JIRA FIELD MAPPING ────────────────────────────────────────────────────────
 function getSubcategoryDisplay(d) {
   switch (d.category) {
@@ -296,8 +355,20 @@ function getSubcategoryDisplay(d) {
   }
 }
 
-function buildJiraFields(d, p, inputText) {
-  const pharmaOption = p ? JIRA_APOTHEEK_MAP[p.alias] : null;
+function buildJiraFields(d, p, inputText, apotheekOptions = []) {
+  let pharmaFieldValue = null;
+  if (p) {
+    if (apotheekOptions.length) {
+      const opt = apotheekOptions.find(o =>
+        o.value?.toUpperCase().startsWith(p.alias) ||
+        o.value?.toLowerCase().includes((p.name || '').toLowerCase())
+      );
+      pharmaFieldValue = opt ? { value: opt.value } : null;
+    } else {
+      const fallback = JIRA_APOTHEEK_MAP[p.alias];
+      pharmaFieldValue = fallback ? { value: fallback } : null;
+    }
+  }
   const alias = p ? p.alias : (d.alias_hint || "");
   const pharmaLabel = p ? `${p.alias} - ${p.name}` : (d.apotheek_hint || "Onbekende apotheek");
   const summary = `[${alias || "?"}] ${d.summary || "Support issue"}`.substring(0, 255);
@@ -306,34 +377,7 @@ function buildJiraFields(d, p, inputText) {
   const mkHeading = (t, level=3) => ({ type:"heading", attrs:{ level }, content:[{ type:"text", text:t }] });
   const subDisplay = getSubcategoryDisplay(d);
 
-  // Build pharmacy-specific context lines based on category + keywords
-  const contextLines = [];
-  if (p) {
-    const mention = `${d.summary || ""} ${d.symptomen || ""}`.toLowerCase();
-    const isRobot   = /robot|automati/i.test(mention);
-    const isElec    = /elektric|stroom|zekering|bedrading/i.test(mention);
-    const isWater   = /water|lekkage|loodgieter|sanitair/i.test(mention);
-    const isIT      = d.category === "IT";
-    const isGebouw  = d.category === "Gebouwbeheer";
-
-    if (p.robot?.type && (isIT || isRobot)) {
-      let r = `Robot: ${p.robot.type}`;
-      if (p.robot.leverancier) r += ` — leverancier: ${p.robot.leverancier}${p.robot.telefoon ? ` (${p.robot.telefoon})` : ""}`;
-      contextLines.push(r);
-    }
-    if (isIT && p.leveranciers?.it) {
-      const it = p.leveranciers.it;
-      contextLines.push(`IT Support: ${it.naam || "—"}${it.telefoon ? ` — ${it.telefoon}` : ""}`);
-    }
-    if ((isGebouw || isElec) && p.leveranciers?.elektricien) {
-      const e = p.leveranciers.elektricien;
-      contextLines.push(`Elektricien: ${e.naam || "—"}${e.telefoon ? ` — ${e.telefoon}` : ""}`);
-    }
-    if ((isGebouw || isWater) && p.leveranciers?.loodgieter) {
-      const l = p.leveranciers.loodgieter;
-      contextLines.push(`Loodgieter: ${l.naam || "—"}${l.telefoon ? ` — ${l.telefoon}` : ""}`);
-    }
-  }
+  const contextLines = collectPharmacyContext(d, p);
 
   const description = {
     type:"doc", version:1,
@@ -361,7 +405,7 @@ function buildJiraFields(d, p, inputText) {
   const base = {
     summary, description,
     priority: { name: d.priority || "Medium" },
-    ...(pharmaOption ? { customfield_10107: { value: pharmaOption } } : {}),
+    ...(pharmaFieldValue ? { customfield_10107: pharmaFieldValue } : {}),
   };
 
   switch (d.category) {
@@ -410,6 +454,7 @@ export default function HealisApp() {
   const [pharmacies,      setPharmacies]      = useState(PHARMACIES);
   const [pharmSyncTime,   setPharmSyncTime]   = useState(null);
   const [pharmSyncLoading,setPharmSyncLoading]= useState(false);
+  const [jiraApotheekOptions, setJiraApotheekOptions] = useState([]);
 
   const srRef    = useRef(null);
   const timerRef = useRef(null);
@@ -456,6 +501,18 @@ export default function HealisApp() {
       }
     };
     load();
+  }, []);
+
+  // ── JIRA FIELD OPTIONS ────────────────────────────────────────────────────────
+  useEffect(() => {
+    fetch('/api/jira/rest/api/3/issue/createmeta?projectKeys=IT&issuetypeNames=Support&expand=projects.issuetypes.fields')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const fields = data?.projects?.[0]?.issuetypes?.[0]?.fields;
+        const opts = fields?.customfield_10107?.allowedValues;
+        if (opts?.length) setJiraApotheekOptions(opts);
+      })
+      .catch(() => {});
   }, []);
 
   const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
@@ -584,7 +641,7 @@ Prioriteiten:
     const results = [];
     try {
       for (const draft of ticketDrafts) {
-        const fields = buildJiraFields(draft, matchedPharmacy, inputText);
+        const fields = buildJiraFields(draft, matchedPharmacy, inputText, jiraApotheekOptions);
         const res = await fetch("/api/jira", {
           method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields })
         });
@@ -595,7 +652,7 @@ Prioriteiten:
       setCreatedTickets(results);
       setStage(STAGE.DONE);
     } catch(err) { setAppError("Jira fout: " + err.message); setStage(STAGE.REVIEW); }
-  }, [ticketDrafts, matchedPharmacy, inputText]);
+  }, [ticketDrafts, matchedPharmacy, inputText, jiraApotheekOptions]);
 
   const reset = () => {
     setStage(STAGE.SELECT); setInputText(""); setTicketDrafts([]);
