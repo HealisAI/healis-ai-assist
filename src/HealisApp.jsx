@@ -184,15 +184,15 @@ function BrandingPanel() {
   );
 }
 
-function AppHeader() {
+function AppHeader({ onLogoClick }) {
   return (
     <div style={{background:"var(--color-background-primary)",borderBottom:"0.5px solid var(--color-border-tertiary)",flexShrink:0}}>
       <div style={{height:4,background:"linear-gradient(90deg,#8c84e3,#6b63c9)"}} />
       <div style={{padding:"10px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",alignItems:"baseline",gap:7}}>
+        <button onClick={onLogoClick} style={{display:"flex",alignItems:"baseline",gap:7,background:"none",border:"none",cursor:onLogoClick?"pointer":"default",padding:0,fontFamily:"inherit"}}>
           <HealisLogo width={110} />
           <span style={{fontSize:13,fontWeight:500,color:"#8c84e3",letterSpacing:"-0.2px"}}>Assist</span>
-        </div>
+        </button>
         <span style={{fontSize:11,color:"var(--color-text-tertiary)",fontWeight:500}}>Apotheek Support · Jira</span>
       </div>
     </div>
@@ -527,7 +527,7 @@ Prioriteiten:
         @media(max-width:780px){.select-layout{flex-direction:column-reverse;min-height:auto;flex:none}.select-left{flex:none;padding:24px 20px}.select-right{flex:none;padding:24px 16px;overflow-y:visible}}
       `}</style>
 
-      <AppHeader />
+      <AppHeader onLogoClick={() => setStage(STAGE.HUB)} />
 
       <main style={{flex:1,display:"flex",flexDirection:"column"}}>
 
@@ -618,7 +618,7 @@ Prioriteiten:
                     </div>
                     <div>
                       <div style={{fontSize:15,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Onboarding</div>
-                      <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.6}}>Begeleiding voor nieuwe apotheken en medewerkers bij hun integratie binnen Healis.</div>
+                      <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.6}}>Een warm welkom voor nieuwe apotheken en collega's — zodat iedereen zich snel thuis voelt binnen het Healis-team.</div>
                     </div>
                     <span className="hub-badge-soon">Binnenkort beschikbaar</span>
                   </div>
@@ -654,6 +654,10 @@ Prioriteiten:
             {/* ── Right: pharmacy selector ── */}
             <div className="select-right">
               <div style={{maxWidth:560,width:"100%",margin:"0 auto",flex:1,display:"flex",flexDirection:"column"}}>
+                <button onClick={() => setStage(STAGE.HUB)} style={{display:"inline-flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:"var(--color-text-tertiary)",fontSize:12,fontFamily:"var(--font-sans)",padding:"0 0 16px 0",marginBottom:4}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                  Terug naar startscherm
+                </button>
                 <div style={{marginBottom:20}}>
                   <div style={{fontSize:18,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Selecteer uw apotheek</div>
                   <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
