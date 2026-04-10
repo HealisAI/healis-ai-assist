@@ -75,7 +75,7 @@ const HR_MEDEWERKER_MAP  = { Onboarding:"Onboarding & offboarding", Loon:"Loon, 
 const KLACHT_MAP         = { Service:"Service & wachttijd", Medicatie:"Medicatie & advies", Prijs:"Prijs & terugbetaling", Voorraad:"Voorraad & bestelling", Privacy:"Privacy & administratie", Andere:"Andere" };
 
 // ── STAGE & CATEGORY META ─────────────────────────────────────────────────────
-const STAGE = { SELECT:"select", IDLE:"idle", RECORDING:"recording", TRANSCRIBING:"transcribing", PROCESSING:"processing", REVIEW:"review", CREATING:"creating", DONE:"done" };
+const STAGE = { HUB:"hub", SELECT:"select", IDLE:"idle", RECORDING:"recording", TRANSCRIBING:"transcribing", PROCESSING:"processing", REVIEW:"review", CREATING:"creating", DONE:"done" };
 
 const CAT_META = {
   IT:           { label:"IT Support",         color:"#E8F5EC", tx:"#008624", br:"#7AC483", project:"IT",  issueType:"Support" },
@@ -297,7 +297,7 @@ function buildJiraFields(d, p, inputText) {
 
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 export default function HealisApp() {
-  const [stage,           setStage]           = useState(STAGE.SELECT);
+  const [stage,           setStage]           = useState(STAGE.HUB);
   const [pickSearch,      setPickSearch]      = useState("");
   const [pickSelected,    setPickSelected]    = useState(null);   // pharmacy on select screen
   const [inputText,       setInputText]       = useState("");
@@ -509,6 +509,16 @@ Prioriteiten:
         .pharm-card{background:var(--color-background-primary);border:1.5px solid var(--color-border-tertiary);border-radius:10px;padding:11px 13px;cursor:pointer;transition:border-color .13s,background .13s}
         .pharm-card:hover{border-color:#7AC483;background:#f8fdf8}
         .pharm-card.selected{border-color:#008624;background:#E8F5EC}
+        @keyframes hhubtile{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+        .hub-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%}
+        .hub-tile{background:var(--color-background-primary);border-radius:14px;border:1px solid var(--color-border-tertiary);padding:24px 22px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;transition:box-shadow .18s,transform .18s}
+        .hub-tile-active{cursor:pointer;border-top:3px solid #008624}
+        .hub-tile-active:hover{box-shadow:0 6px 28px rgba(0,134,36,.13);transform:translateY(-3px)}
+        .hub-tile-active:active{transform:translateY(-1px)}
+        .hub-tile-locked{opacity:0.48;cursor:not-allowed}
+        .hub-badge-active{display:inline-flex;align-items:center;gap:5px;background:#E8F5EC;color:#008624;border:0.5px solid #7AC483;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600}
+        .hub-badge-soon{display:inline-flex;align-items:center;gap:5px;background:var(--color-background-secondary);color:var(--color-text-tertiary);border:0.5px solid var(--color-border-secondary);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500}
+        @media(max-width:600px){.hub-grid{grid-template-columns:1fr}}
         .select-layout{display:flex;flex:1;min-height:0}
         .select-left{flex:0 0 360px;background:linear-gradient(160deg,#005A18 0%,#008624 55%,#1a9e3a 100%);padding:44px 38px;display:flex;flex-direction:column;position:relative;overflow:hidden}
         .select-left::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
@@ -520,6 +530,119 @@ Prioriteiten:
       <AppHeader />
 
       <main style={{flex:1,display:"flex",flexDirection:"column"}}>
+
+        {/* ── HUB SCREEN ── */}
+        {stage === STAGE.HUB && (
+          <div className="hfade select-layout">
+
+            {/* Left: platform branding */}
+            <div className="select-left">
+              <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",height:"100%"}}>
+                <div style={{fontSize:22,fontWeight:700,color:"#fff",lineHeight:1.35,marginBottom:10}}>
+                  Samen sterk in zorg,<br/>persoonlijk en dichtbij.
+                </div>
+                <div style={{fontSize:13,color:"rgba(255,255,255,0.78)",lineHeight:1.75,marginBottom:36}}>
+                  Het digitale platform voor Healis-apotheken — ondersteuning, kennis en kwaliteit op één plek.
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:18}}>
+                  {[
+                    { icon:"🏥", title:"30 aangesloten apotheken", desc:"Verspreid over heel Vlaanderen en Brussel" },
+                    { icon:"🤖", title:"AI-ondersteund", desc:"Automatische verwerking van meldingen en acties" },
+                    { icon:"🔗", title:"Geïntegreerd met Jira", desc:"Directe koppeling met uw team en back-office" },
+                  ].map(({icon,title,desc}) => (
+                    <div key={title} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                      <span style={{fontSize:18,lineHeight:"22px",flexShrink:0,marginTop:1}}>{icon}</span>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:700,color:"#fff",marginBottom:2}}>{title}</div>
+                        <div style={{fontSize:12,color:"rgba(255,255,255,0.65)",lineHeight:1.55}}>{desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: module grid */}
+            <div className="select-right">
+              <div style={{maxWidth:560,width:"100%",margin:"0 auto",flex:1,display:"flex",flexDirection:"column",justifyContent:"center",gap:24}}>
+
+                <div>
+                  <div style={{fontSize:20,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Welkom bij Healis Assist</div>
+                  <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>Kies een module om aan de slag te gaan.</div>
+                </div>
+
+                <div className="hub-grid">
+
+                  {/* 1 — Probleem melden (active) */}
+                  <div className="hub-tile hub-tile-active" onClick={() => setStage(STAGE.SELECT)}
+                    style={{animationName:"hhubtile",animationDuration:".3s",animationFillMode:"both",animationDelay:"0ms"}}>
+                    <div style={{width:42,height:42,borderRadius:10,background:"#E8F5EC",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#008624" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Probleem melden</div>
+                      <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.6}}>Meld een technisch of operationeel probleem via spraak of tekst. AI verwerkt uw melding automatisch.</div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
+                      <span className="hub-badge-active">
+                        <svg width="9" height="9" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="#008624"/></svg>
+                        Actief
+                      </span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#008624" strokeWidth="2" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                  </div>
+
+                  {/* 2 — Kennisbank (coming soon) */}
+                  <div className="hub-tile hub-tile-locked" style={{borderTop:"3px solid #6B63C9",animationName:"hhubtile",animationDuration:".3s",animationFillMode:"both",animationDelay:"60ms"}}>
+                    <div style={{width:42,height:42,borderRadius:10,background:"#F0EEFF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6B63C9" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Kennisbank</div>
+                      <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.6}}>Magistrale bereidingen, protocollen en farmaceutische procedures raadplegen en aanmaken.</div>
+                    </div>
+                    <span className="hub-badge-soon">Binnenkort beschikbaar</span>
+                  </div>
+
+                  {/* 3 — Onboarding (coming soon) */}
+                  <div className="hub-tile hub-tile-locked" style={{borderTop:"3px solid #EF9F27",animationName:"hhubtile",animationDuration:".3s",animationFillMode:"both",animationDelay:"120ms"}}>
+                    <div style={{width:42,height:42,borderRadius:10,background:"#FFF4E5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EF9F27" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Onboarding</div>
+                      <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.6}}>Begeleiding voor nieuwe apotheken en medewerkers bij hun integratie binnen Healis.</div>
+                    </div>
+                    <span className="hub-badge-soon">Binnenkort beschikbaar</span>
+                  </div>
+
+                  {/* 4 — Kwaliteitshandboek (coming soon) */}
+                  <div className="hub-tile hub-tile-locked" style={{borderTop:"3px solid #0077B6",animationName:"hhubtile",animationDuration:".3s",animationFillMode:"both",animationDelay:"180ms"}}>
+                    <div style={{width:42,height:42,borderRadius:10,background:"#E8F4FD",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0077B6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Kwaliteitshandboek</div>
+                      <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.6}}>Kwaliteitsborging, procedures en compliance documentatie voor uw apotheek.</div>
+                    </div>
+                    <span className="hub-badge-soon">Binnenkort beschikbaar</span>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── PHARMACY SELECT SCREEN ── */}
         {stage === STAGE.SELECT && (
