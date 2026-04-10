@@ -157,6 +157,7 @@ function BrandingPanel() {
   return (
     <div className="select-left">
       <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",height:"100%"}}>
+        <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.55)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:14}}>Healis Assist</div>
         <div style={{fontSize:22,fontWeight:700,color:"#fff",lineHeight:1.35,marginBottom:10}}>
           Samen sterk in zorg,<br/>persoonlijk en dichtbij.
         </div>
@@ -535,32 +536,8 @@ Prioriteiten:
         {stage === STAGE.HUB && (
           <div className="hfade select-layout">
 
-            {/* Left: platform branding */}
-            <div className="select-left">
-              <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",height:"100%"}}>
-                <div style={{fontSize:22,fontWeight:700,color:"#fff",lineHeight:1.35,marginBottom:10}}>
-                  Samen sterk in zorg,<br/>persoonlijk en dichtbij.
-                </div>
-                <div style={{fontSize:13,color:"rgba(255,255,255,0.78)",lineHeight:1.75,marginBottom:36}}>
-                  Het digitale platform voor Healis-apotheken — ondersteuning, kennis en kwaliteit op één plek.
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:18}}>
-                  {[
-                    { icon:"🏥", title:"30 aangesloten apotheken", desc:"Verspreid over heel Vlaanderen en Brussel" },
-                    { icon:"🤖", title:"AI-ondersteund", desc:"Automatische verwerking van meldingen en acties" },
-                    { icon:"🔗", title:"Geïntegreerd met Jira", desc:"Directe koppeling met uw team en back-office" },
-                  ].map(({icon,title,desc}) => (
-                    <div key={title} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-                      <span style={{fontSize:18,lineHeight:"22px",flexShrink:0,marginTop:1}}>{icon}</span>
-                      <div>
-                        <div style={{fontSize:13,fontWeight:700,color:"#fff",marginBottom:2}}>{title}</div>
-                        <div style={{fontSize:12,color:"rgba(255,255,255,0.65)",lineHeight:1.55}}>{desc}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            {/* Left: branding panel */}
+            <BrandingPanel />
 
             {/* Right: module grid */}
             <div className="select-right">
