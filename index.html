@@ -6,6 +6,9 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="msapplication-TileColor" content="#008624" />
+    <meta name="theme-color" content="#008624" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
@@ -13,25 +16,47 @@
     <!-- Primary meta -->
     <title>Healis Assist — Apotheek Support Platform</title>
     <meta name="description" content="Meld problemen, stel vragen en raadpleeg informatie via spraak of tekst. AI verwerkt uw melding en maakt automatisch tickets aan voor het betrokken team." />
-    <meta name="theme-color" content="#008624" />
 
-    <!-- Open Graph -->
+    <!-- Open Graph (Facebook, LinkedIn, Teams, Slack, WhatsApp) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Healis Assist" />
     <meta property="og:title" content="Healis Assist — Samen sterk in zorg" />
     <meta property="og:description" content="Het digitale platform voor Healis-apotheken. Meld problemen, stel vragen en raadpleeg informatie via spraak of tekst." />
-    <meta property="og:image" content="https://healis-ai-assist.vercel.app/og-image.jpg" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Healis Assist — apotheek support platform" />
     <meta property="og:url" content="https://healis-ai-assist.vercel.app/" />
     <meta property="og:locale" content="nl_BE" />
+    <meta property="og:image" content="https://healis-ai-assist.vercel.app/og-image.jpg" />
+    <meta property="og:image:secure_url" content="https://healis-ai-assist.vercel.app/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Healis Assist — apotheek support platform voor Healis-apotheken" />
 
-    <!-- Twitter Card -->
+    <!-- Twitter / X Card (ook gebruikt door Teams voor grote preview) -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Healis Assist — Samen sterk in zorg" />
     <meta name="twitter:description" content="Het digitale platform voor Healis-apotheken. Meld problemen, stel vragen en raadpleeg informatie via spraak of tekst." />
     <meta name="twitter:image" content="https://healis-ai-assist.vercel.app/og-image.jpg" />
+    <meta name="twitter:image:alt" content="Healis Assist — apotheek support platform voor Healis-apotheken" />
+
+    <!-- Schema.org JSON-LD (Teams, Google, Bing en andere parsers) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Healis Assist",
+      "description": "Het digitale platform voor Healis-apotheken. Meld problemen, stel vragen en raadpleeg informatie via spraak of tekst.",
+      "url": "https://healis-ai-assist.vercel.app/",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "image": "https://healis-ai-assist.vercel.app/og-image.jpg",
+      "inLanguage": "nl-BE",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Healis",
+        "url": "https://healis-ai-assist.vercel.app/"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
