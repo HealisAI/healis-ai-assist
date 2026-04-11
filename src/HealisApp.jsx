@@ -367,10 +367,13 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
         o.value?.toUpperCase().startsWith(p.alias) ||
         o.value?.toLowerCase().includes((p.name || '').toLowerCase())
       );
-      pharmaFieldValue = opt ? { value: opt.value } : null;
-    } else {
-      const fallback = JIRA_APOTHEEK_MAP[p.alias];
-      pharmaFieldValue = fallback ? { value: fallback } : null;
+      // If found in live list use exact value; otherwise fall through to fallbacks below
+      if (opt) pharmaFieldValue = { value: opt.value };
+    }
+    if (!pharmaFieldValue) {
+      // Try hard-coded map, then construct from alias+name (matches syncJiraOptions format)
+      const hardcoded = JIRA_APOTHEEK_MAP[p.alias];
+      pharmaFieldValue = { value: hardcoded || `${p.alias} - ${p.name}` };
     }
   }
   const alias = p ? p.alias : (d.alias_hint || "");
