@@ -1033,11 +1033,11 @@ Prioriteiten:
             </div>
             <div style={{padding:"16px 18px",display:"flex",flexDirection:"column",gap:16,overflowY:"auto",flex:1}}>
               {[
-                {icon:"🏪", tip:"Noem de apotheek bij naam",       sub:'Bv. "VDV", "Jongen" of "Roosevelt"'},
                 {icon:"🔍", tip:"Beschrijf het probleem concreet", sub:"Wat is er mis? Wat ziet u? Wanneer begon het?"},
                 {icon:"🔢", tip:"Vermeld foutcodes of alarmen",    sub:'Bv. "foutcode E4" of "rood alarm op robot"'},
                 {icon:"🚨", tip:"Zeg 'dringend' voor urgentie",   sub:'"Business Critical" wordt automatisch herkend door AI'},
                 {icon:"📋", tip:"Meerdere problemen? Prima",       sub:"Spreek alles in — AI maakt aparte tickets"},
+                {icon:"✨", tip:"Typo's of slordige zinnen? Geen probleem", sub:"Klik op 'Optimaliseer met AI' in het volgende scherm — AI verbetert de tekst en vult de details automatisch in"},
               ].map(({icon, tip, sub}) => (
                 <div key={tip} style={{display:"flex",gap:11,alignItems:"flex-start"}}>
                   <span style={{fontSize:18,flexShrink:0,lineHeight:"22px",marginTop:1}}>{icon}</span>
