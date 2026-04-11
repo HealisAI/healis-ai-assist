@@ -804,7 +804,7 @@ Prioriteiten:
         @keyframes hwave{0%,100%{height:5px}50%{height:28px}}
         .hwavebar{width:4px;border-radius:2px;background:#A32D2D;animation:hwave .9s ease-in-out infinite;align-self:center}
         @keyframes htipsattract{0%,100%{box-shadow:0 1px 6px rgba(0,0,0,.09);transform:scale(1)}50%{box-shadow:0 0 0 7px rgba(0,134,36,.2),0 1px 6px rgba(0,0,0,.09);transform:scale(1.12)}}
-        .htips-btn{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;transition:background .12s,color .12s;box-shadow:0 1px 6px rgba(0,0,0,.09);padding:0;animation:htipsattract 1.1s ease 1.2s 3}
+        .htips-btn{position:absolute;top:14px;right:14px;width:40px;height:40px;border-radius:50%;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;transition:background .12s,color .12s;box-shadow:0 1px 6px rgba(0,0,0,.09);padding:0;animation:htipsattract 1.1s ease 1.2s 3}
         .htips-btn:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
         .htips-drawer{position:absolute;top:0;right:0;bottom:0;width:min(290px,88%);background:var(--color-background-primary);border-left:0.5px solid var(--color-border-secondary);z-index:19;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:-6px 0 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
         .htips-drawer.open{transform:translateX(0)}
@@ -1013,8 +1013,8 @@ Prioriteiten:
           {/* ── Tips button ── */}
           <button className="htips-btn" onClick={() => setShowTips(s => !s)} aria-label="Tips & hulp">
             {showTips
-              ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>}
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>}
           </button>
           {/* ── Tips drawer ── */}
           <div className={`htips-drawer${showTips ? " open" : ""}`}>
