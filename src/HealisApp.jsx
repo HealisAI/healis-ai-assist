@@ -475,13 +475,14 @@ export default function HealisApp() {
           if (hasComplete) {
             setPharmacies(cached.pharmacies);
             setPharmSyncTime(cached.fetchedAt);
+            if (cached.jiraApotheekOptions?.length) setJiraApotheekOptions(cached.jiraApotheekOptions);
             if (Date.now() - cached.fetchedAt < CACHE_TTL) return; // fresh — skip API call
           } else {
             localStorage.removeItem(CACHE_KEY); // stale pre-merge cache — force refresh
           }
         }
       } catch {}
-      // Fetch fresh data from Confluence
+      // Fetch fresh data from Confluence (also syncs Jira custom field options)
       setPharmSyncLoading(true);
       try {
         const res = await fetch("/api/pharmacies");
@@ -492,7 +493,12 @@ export default function HealisApp() {
           setPharmacies(merged);
           const now = Date.now();
           setPharmSyncTime(now);
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ pharmacies: merged, fetchedAt: now }));
+          if (data.jiraApotheekOptions?.length) setJiraApotheekOptions(data.jiraApotheekOptions);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            pharmacies: merged,
+            jiraApotheekOptions: data.jiraApotheekOptions || [],
+            fetchedAt: now,
+          }));
         }
       } catch {
         // Silent fallback — cached or hard-coded list already in state

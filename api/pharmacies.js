@@ -208,6 +208,63 @@ async function resolveParentPageId(base, creds) {
   return KNOWN_ID  // fallback to hardcoded known ID
 }
 
+// ── Jira custom field option sync ─────────────────────────────────────────────
+// Ensures every pharmacy from Confluence has a corresponding dropdown option
+// in customfield_10107. Requires the API token to have Jira admin rights.
+// Fails silently — ticket creation still works, the field just won't be set.
+
+async function syncJiraOptions(base, creds, pharmacies) {
+  try {
+    // 1. Fetch field context ID
+    const ctxRes = await fetch(
+      `${base}/rest/api/3/customField/customfield_10107/context`,
+      { headers: { 'Authorization': `Basic ${creds}`, 'Accept': 'application/json' } }
+    )
+    if (!ctxRes.ok) return []
+    const ctxData = await ctxRes.json()
+    const contextId = ctxData.values?.[0]?.id
+    if (!contextId) return []
+
+    // 2. Fetch existing options
+    const optRes = await fetch(
+      `${base}/rest/api/3/customField/customfield_10107/context/${contextId}/option?maxResults=200`,
+      { headers: { 'Authorization': `Basic ${creds}`, 'Accept': 'application/json' } }
+    )
+    if (!optRes.ok) return []
+    const optData = await optRes.json()
+    const existing = optData.values || []
+
+    // 3. Determine which pharmacies have no option yet (match on alias prefix)
+    const existingAliases = new Set(
+      existing.map(o => o.value.split(' - ')[0].toUpperCase().trim())
+    )
+    const toAdd = pharmacies.filter(
+      p => p.alias && p.name && !existingAliases.has(p.alias.toUpperCase())
+    )
+
+    if (!toAdd.length) return existing
+
+    // 4. Create missing options
+    const createRes = await fetch(
+      `${base}/rest/api/3/customField/customfield_10107/context/${contextId}/option`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${creds}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ options: toAdd.map(p => ({ value: `${p.alias} - ${p.name}` })) }),
+      }
+    )
+    if (!createRes.ok) return existing
+    const created = await createRes.json()
+    return [...existing, ...(created.options || [])]
+  } catch {
+    return []
+  }
+}
+
 // ── Vercel handler ────────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
@@ -234,7 +291,8 @@ module.exports = async function handler(req, res) {
       .map(page => parsePharmacyPage(page.title, page.body?.storage?.value || ''))
       .filter(p => p.alias)
 
-    res.status(200).json({ pharmacies, fetchedAt: Date.now(), total: pharmacies.length })
+    const jiraApotheekOptions = await syncJiraOptions(base, creds, pharmacies)
+    res.status(200).json({ pharmacies, fetchedAt: Date.now(), total: pharmacies.length, jiraApotheekOptions })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
