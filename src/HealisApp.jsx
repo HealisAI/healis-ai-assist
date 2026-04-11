@@ -413,8 +413,6 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
     summary, description,
     priority: { name: d.priority || "Medium" },
     ...(pharmaFieldValue ? { customfield_10107: pharmaFieldValue } : {}),
-    ...(p?.email ? { customfield_10214: p.email } : {}),
-    ...(p?.phone ? { customfield_10215: p.phone } : {}),
   };
 
   switch (d.category) {
@@ -672,6 +670,18 @@ Prioriteiten:
         const data = await res.json();
         if (!res.ok) throw new Error(data.errorMessages?.[0] || JSON.stringify(data.errors) || `HTTP ${res.status}`);
         results.push({ key:data.key, url:`https://healis.atlassian.net/browse/${data.key}`, summary:fields.summary, project:fields.project.key, issueType:fields.issuetype.name, priority:draft.priority, category:draft.category });
+        // Set pharmacy contact fields via update (next-gen projects reject them on create)
+        if (data.key && matchedPharmacy) {
+          const contactFields = {
+            ...(matchedPharmacy.email ? { customfield_10214: matchedPharmacy.email } : {}),
+            ...(matchedPharmacy.phone ? { customfield_10215: matchedPharmacy.phone } : {}),
+          };
+          if (Object.keys(contactFields).length) {
+            fetch(`/api/jira/rest/api/3/issue/${data.key}`, {
+              method:"PUT", headers:API_HEADERS, body:JSON.stringify({ fields: contactFields })
+            }).catch(() => {}); // secondary — ticket creation already succeeded
+          }
+        }
       }
       setCreatedTickets(results);
       setStage(STAGE.DONE);
