@@ -42,6 +42,25 @@ export default defineConfig(({ mode }) => {
             })
           })
 
+          // /api/jira — run the Vercel handler directly so dev matches production exactly
+          const jiraPath = require.resolve('./api/jira.js')
+          server.middlewares.use('/api/jira', async (req, res, next) => {
+            // Only handle exact /api/jira (Connect strips the prefix → req.url === '/')
+            // Sub-paths like /api/jira/rest/... are handled by the catch-all below
+            if (req.url !== '/' && req.url !== '') return next()
+            // Parse the body so req.body is available (api/jira.js expects this)
+            let raw = ''
+            for await (const chunk of req) raw += chunk
+            try { req.body = raw ? JSON.parse(raw) : {} } catch { req.body = {} }
+            delete require.cache[jiraPath]
+            const jiraHandler = require(jiraPath)
+            jiraHandler(req, adaptRes(res)).catch(err => {
+              res.statusCode = 500
+              res.end(JSON.stringify({ error: err.message }))
+            })
+          })
+
+          // /api/jira/* — forward sub-paths (e.g. field context queries) to Jira directly
           server.middlewares.use('/api/jira', async (req, res) => {
             const url = jiraBase + req.url
             let body = ''

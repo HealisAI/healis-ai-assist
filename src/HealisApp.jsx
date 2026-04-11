@@ -665,9 +665,9 @@ Prioriteiten:
           };
           if (Object.keys(contactFields).length) {
             try {
-              const upRes = await fetch(`/api/jira/rest/api/3/issue/${data.key}`, {
+              const upRes = await fetch(`/api/jira`, {
                 method: "PUT", headers: API_HEADERS,
-                body: JSON.stringify({ fields: contactFields }),
+                body: JSON.stringify({ issueKey: data.key, fields: contactFields }),
               });
               if (!upRes.ok) {
                 const upErr = await upRes.json().catch(() => ({}));
