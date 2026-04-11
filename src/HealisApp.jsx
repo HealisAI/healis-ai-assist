@@ -679,8 +679,7 @@ Prioriteiten:
           method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields })
         });
         let data = await res.json();
-        // If Jira rejects contact fields at create time, retry without them then PUT separately
-        let needsContactUpdate = false;
+        // If Jira rejects contact fields explicitly, retry the POST without them
         if (!res.ok && data.errors &&
             (data.errors.customfield_10214 || data.errors.customfield_10215)) {
           const { customfield_10214, customfield_10215, ...fieldsWithoutContact } = fields;
@@ -688,11 +687,12 @@ Prioriteiten:
             method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields: fieldsWithoutContact })
           });
           data = await res.json();
-          needsContactUpdate = true;
         }
         if (!res.ok) throw new Error(data.errorMessages?.[0] || JSON.stringify(data.errors) || `HTTP ${res.status}`);
         results.push({ key:data.key, url:`https://healis.atlassian.net/browse/${data.key}`, summary:fields.summary, project:fields.project.key, issueType:fields.issuetype.name, priority:draft.priority, category:draft.category });
-        if (needsContactUpdate && data.key && matchedPharmacy) {
+        // ALWAYS PUT contact fields — team-managed projects silently drop unknown fields
+        // on create (HTTP 200 but field stays empty), so the PUT is the only reliable path
+        if (data.key && matchedPharmacy) {
           const contactFields = {
             ...(matchedPharmacy.email ? { customfield_10214: matchedPharmacy.email } : {}),
             ...(matchedPharmacy.phone ? { customfield_10215: matchedPharmacy.phone } : {}),
@@ -708,7 +708,7 @@ Prioriteiten:
                 results[results.length - 1].contactFieldWarning =
                   `Contactvelden niet ingevuld (${upRes.status}): ${JSON.stringify(upErr.errors || upErr.errorMessages || upErr)}`;
               }
-            } catch { /* PUT falen blokkeert ticketcreatie niet */ }
+            } catch { /* PUT failure blocks nothing */ }
           }
         }
       }
