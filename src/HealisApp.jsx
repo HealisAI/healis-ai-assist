@@ -382,11 +382,10 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
 
   const mkPara = t => ({ type:"paragraph", content:[{ type:"text", text:String(t) }] });
   const mkLabel = (icon, label, value) => ({ type:"paragraph", content:[
-    { type:"text", text:`${icon} `, },
+    { type:"text", text:`${icon} ` },
     { type:"text", text:label+": ", marks:[{ type:"strong" }] },
     { type:"text", text:String(value) }
   ]});
-  const mkDivider = () => mkPara("•");
   const subDisplay = getSubcategoryDisplay(d);
 
   const contextLines = collectPharmacyContext(d, p);
@@ -394,20 +393,13 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
   const description = {
     type:"doc", version:1,
     content:[
-      ...(d.priority==="Business Critical" ? [
-        mkPara("🚨 Business Critical — Directe interventie vereist"),
-        mkDivider(),
-      ] : []),
+      ...(d.priority==="Business Critical" ? [mkPara("🚨 Business Critical — Directe interventie vereist")] : []),
       mkLabel("📋", "Categorie", `${CAT_META[d.category]?.label || d.category || "Support"}${subDisplay ? ` › ${subDisplay[1]}` : ""}`),
       ...(d.werknemer_naam ? [mkLabel("👤", "Medewerker", d.werknemer_naam)] : []),
       mkLabel("🔍", "Probleem", d.symptomen || "Zie originele melding"),
       ...(d.foutcode ? [mkLabel("🔢", "Foutcode", d.foutcode)] : []),
       mkLabel("✅", "Actie", d.gewenste_actie || "Zie beschrijving"),
-      ...(contextLines.length ? [
-        mkDivider(),
-        ...contextLines.map(t => mkPara(`- ${String(t).trim()}`)),
-      ] : []),
-      mkDivider(),
+      ...contextLines.map(t => mkPara(`🏪 ${String(t).trim()}`)),
       mkPara(`📝 ${inputText}`),
       mkPara(`Healis AI · ${new Date().toLocaleString("nl-BE")} · confidence ${d.confidence != null ? Math.round(d.confidence*100)+"%" : "n/a"}`),
     ]
