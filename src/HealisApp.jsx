@@ -409,8 +409,9 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
     summary, description,
     priority: { name: d.priority || "Medium" },
     ...(pharmaFieldValue ? { customfield_10107: pharmaFieldValue } : {}),
-    ...(p?.email ? { customfield_10214: p.email } : {}),
-    ...(p?.phone ? { customfield_10215: p.phone } : {}),
+    ...(p?.email    ? { customfield_10214: p.email    } : {}),
+    ...(p?.phone    ? { customfield_10215: p.phone    } : {}),
+    ...(p?.manager  ? { customfield_10248: p.manager  } : {}),
   };
 
   switch (d.category) {
@@ -681,8 +682,9 @@ Prioriteiten:
         // on create (HTTP 200 but field stays empty), so the PUT is the only reliable path
         if (data.key && matchedPharmacy) {
           const contactFields = {
-            ...(matchedPharmacy.email ? { customfield_10214: matchedPharmacy.email } : {}),
-            ...(matchedPharmacy.phone ? { customfield_10215: matchedPharmacy.phone } : {}),
+            ...(matchedPharmacy.email   ? { customfield_10214: matchedPharmacy.email   } : {}),
+            ...(matchedPharmacy.phone   ? { customfield_10215: matchedPharmacy.phone   } : {}),
+            ...(matchedPharmacy.manager ? { customfield_10248: matchedPharmacy.manager } : {}),
           };
           if (Object.keys(contactFields).length) {
             try {

@@ -118,6 +118,7 @@ function mapBasicKey(key) {
   if (/^(e-?mail|email apotheek)$/.test(k))                            return 'email'
   if (/^(provincie|province)$/.test(k))                                return 'province'
   if (/^apb/.test(k))                                                   return 'apb'
+  if (/^manager$/.test(k))                                              return 'manager'
   return null
 }
 
