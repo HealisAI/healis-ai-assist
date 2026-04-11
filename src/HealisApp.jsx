@@ -413,6 +413,8 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
     summary, description,
     priority: { name: d.priority || "Medium" },
     ...(pharmaFieldValue ? { customfield_10107: pharmaFieldValue } : {}),
+    ...(p?.email ? { customfield_10214: p.email } : {}),
+    ...(p?.phone ? { customfield_10215: p.phone } : {}),
   };
 
   switch (d.category) {
