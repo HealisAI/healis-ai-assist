@@ -409,6 +409,8 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
     summary, description,
     priority: { name: d.priority || "Medium" },
     ...(pharmaFieldValue ? { customfield_10107: pharmaFieldValue } : {}),
+    ...(p?.email ? { customfield_10214: p.email } : {}),
+    ...(p?.phone ? { customfield_10215: p.phone } : {}),
   };
 
   switch (d.category) {
@@ -651,14 +653,25 @@ Prioriteiten:
     try {
       for (const draft of ticketDrafts) {
         const fields = buildJiraFields(draft, matchedPharmacy, inputText, jiraApotheekOptions);
-        const res = await fetch("/api/jira", {
+        let res = await fetch("/api/jira", {
           method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields })
         });
-        const data = await res.json();
+        let data = await res.json();
+        // If Jira rejects contact fields on create (screen not yet configured), retry without them
+        let needsContactUpdate = false;
+        if (!res.ok && data.errors &&
+            (data.errors.customfield_10214 || data.errors.customfield_10215)) {
+          const { customfield_10214, customfield_10215, ...fieldsWithoutContact } = fields;
+          res = await fetch("/api/jira", {
+            method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields: fieldsWithoutContact })
+          });
+          data = await res.json();
+          needsContactUpdate = true;
+        }
         if (!res.ok) throw new Error(data.errorMessages?.[0] || JSON.stringify(data.errors) || `HTTP ${res.status}`);
         results.push({ key:data.key, url:`https://healis.atlassian.net/browse/${data.key}`, summary:fields.summary, project:fields.project.key, issueType:fields.issuetype.name, priority:draft.priority, category:draft.category });
-        // Set pharmacy contact fields via update (next-gen projects reject them on create)
-        if (data.key && matchedPharmacy) {
+        // Only do a separate PUT if the create couldn't include the contact fields
+        if (needsContactUpdate && data.key && matchedPharmacy) {
           const contactFields = {
             ...(matchedPharmacy.email ? { customfield_10214: matchedPharmacy.email } : {}),
             ...(matchedPharmacy.phone ? { customfield_10215: matchedPharmacy.phone } : {}),
