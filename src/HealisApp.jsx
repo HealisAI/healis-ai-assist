@@ -514,12 +514,21 @@ export default function HealisApp() {
   }, []);
 
   // ── JIRA FIELD OPTIONS ────────────────────────────────────────────────────────
+  // Fetch current dropdown options for customfield_10107 directly from Jira on
+  // every app load — independent of the pharmacy cache so newly added pharmacies
+  // appear immediately without a manual refresh.
   useEffect(() => {
-    fetch('/api/jira/rest/api/3/issue/createmeta?projectKeys=IT&issuetypeNames=Support&expand=projects.issuetypes.fields')
+    const base = '/api/jira/rest/api/3/field/customfield_10107';
+    fetch(`${base}/context`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        const fields = data?.projects?.[0]?.issuetypes?.[0]?.fields;
-        const opts = fields?.customfield_10107?.allowedValues;
+        const contextId = data?.values?.[0]?.id;
+        if (!contextId) return null;
+        return fetch(`${base}/context/${contextId}/option?maxResults=200`);
+      })
+      .then(r => r?.ok ? r.json() : null)
+      .then(data => {
+        const opts = data?.values;
         if (opts?.length) setJiraApotheekOptions(opts);
       })
       .catch(() => {});
