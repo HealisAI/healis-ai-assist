@@ -69,8 +69,43 @@ function classifySection(heading) {
   if (h === '_root') return 'basic'
   if (/contact|apotheek.?info|basis|algemeen|gegevens|identificat/.test(h)) return 'basic'
   if (/robot|automati|dispenseer|dispensing/.test(h)) return 'robot'
+  if (/apparatuur|installat|toestel|equipment/.test(h)) return 'apparatuur'
   if (/leverancier|partner|lokale.?contact|techni/.test(h)) return 'leveranciers'
+  if (/netwerk|internet|wifi|wi.fi/.test(h)) return 'netwerk'
   return 'extra'
+}
+
+// Extract rows from a multi-column table (>2 cols) → array of {col: val} objects.
+// Skips placeholder values ("in te vullen", "-").
+function extractEquipmentTable(html) {
+  const entries = []
+  const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi
+  let tm
+  while ((tm = tableRegex.exec(html)) !== null) {
+    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi
+    const allRows = []
+    let rm
+    while ((rm = rowRegex.exec(tm[1])) !== null) {
+      const cellRegex = /<(th|td)[^>]*>([\s\S]*?)<\/\1>/gi
+      const cells = []
+      let cm
+      while ((cm = cellRegex.exec(rm[1])) !== null) cells.push(stripHtml(cm[2]))
+      if (cells.length > 2) allRows.push(cells)
+    }
+    if (allRows.length < 2) continue
+    const headers = allRows[0].map(h => h.toLowerCase().trim())
+    for (let i = 1; i < allRows.length; i++) {
+      const row = allRows[i]
+      if (!row[0]) continue
+      const entry = {}
+      for (let j = 0; j < Math.min(headers.length, row.length); j++) {
+        const v = row[j]
+        if (v && !/^in te vullen$|^-+$|^_+$/i.test(v.trim())) entry[headers[j]] = v
+      }
+      if (Object.keys(entry).length > 1) entries.push(entry)
+    }
+  }
+  return entries
 }
 
 // Map a key to a basic pharmacy field name (returns null if not a basic field)
@@ -163,11 +198,42 @@ function parsePharmacyPage(title, bodyStorage) {
         const sType = mapLeverancierKey(rawKey)
         pharmacy.leveranciers[sType] = parseContactValue(value)
 
+      } else if (ctx === 'netwerk') {
+        if (!pharmacy.netwerk) pharmacy.netwerk = {}
+        pharmacy.netwerk[rawKey.toLowerCase().replace(/[^a-z0-9]/g, '_')] = value
+
       } else {
         // 'extra' section — group by heading
         if (!pharmacy.extra) pharmacy.extra = {}
         const eKey = heading !== '_root' ? `${heading} — ${rawKey}` : rawKey
         pharmacy.extra[eKey] = value
+      }
+    }
+
+    // 'apparatuur' sections use multi-column tables — parse separately
+    if (ctx === 'apparatuur') {
+      const equipRows = extractEquipmentTable(sHtml)
+      for (const row of equipRows) {
+        const typeVal = row['type'] || row['soort'] || Object.values(row)[0] || ''
+        if (!typeVal) continue
+        const model      = row['merk/model'] || row['model'] || row['merk']
+        const leverancier = row['leverancier']
+        const telefoon   = row['telefoon leverancier'] || row['telefoon']
+        if (/robot/i.test(typeVal)) {
+          if (!pharmacy.robot) pharmacy.robot = {}
+          if (model)              pharmacy.robot.type        = model
+          if (leverancier)        pharmacy.robot.leverancier = leverancier
+          if (telefoon)           pharmacy.robot.telefoon    = telefoon
+          if (row['serienummer']) pharmacy.robot.serienummer = row['serienummer']
+        } else {
+          if (!pharmacy.leveranciers) pharmacy.leveranciers = {}
+          const key = typeVal.toLowerCase().replace(/[^a-z0-9]/g, '_')
+          pharmacy.leveranciers[key] = {
+            ...(model       ? { model }            : {}),
+            ...(leverancier ? { naam: leverancier } : {}),
+            ...(telefoon    ? { telefoon }          : {}),
+          }
+        }
       }
     }
   }
@@ -217,7 +283,7 @@ async function syncJiraOptions(base, creds, pharmacies) {
   try {
     // 1. Fetch field context ID
     const ctxRes = await fetch(
-      `${base}/rest/api/3/customField/customfield_10107/context`,
+      `${base}/rest/api/3/field/customfield_10107/context`,
       { headers: { 'Authorization': `Basic ${creds}`, 'Accept': 'application/json' } }
     )
     if (!ctxRes.ok) return []
@@ -227,7 +293,7 @@ async function syncJiraOptions(base, creds, pharmacies) {
 
     // 2. Fetch existing options
     const optRes = await fetch(
-      `${base}/rest/api/3/customField/customfield_10107/context/${contextId}/option?maxResults=200`,
+      `${base}/rest/api/3/field/customfield_10107/context/${contextId}/option?maxResults=200`,
       { headers: { 'Authorization': `Basic ${creds}`, 'Accept': 'application/json' } }
     )
     if (!optRes.ok) return []
@@ -246,7 +312,7 @@ async function syncJiraOptions(base, creds, pharmacies) {
 
     // 4. Create missing options
     const createRes = await fetch(
-      `${base}/rest/api/3/customField/customfield_10107/context/${contextId}/option`,
+      `${base}/rest/api/3/field/customfield_10107/context/${contextId}/option`,
       {
         method: 'POST',
         headers: {

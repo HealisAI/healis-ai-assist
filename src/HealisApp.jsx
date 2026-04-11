@@ -105,6 +105,9 @@ function buildAIPharmacyContext(pharmacy, inputText) {
       }
     }
   }
+  if (pharmacy.netwerk) {
+    for (const [k, v] of Object.entries(pharmacy.netwerk)) lines.push(`Netwerk ${k}: ${v}`);
+  }
   if (pharmacy.extra) {
     for (const [k, v] of Object.entries(pharmacy.extra)) lines.push(`${k}: ${v}`);
   }
@@ -299,8 +302,8 @@ function collectPharmacyContext(d, p) {
   const isAirco   = /airco|hvac|verwarm|ventilat/i.test(mention) || d.subcategory_gebouw === 'Verwarming';
   const isIT      = d.category === 'IT';
 
-  // Robot — dump all sub-fields when relevant
-  if (p.robot && Object.keys(p.robot).length && (isRobot || isIT)) {
+  // Robot — dump all sub-fields only when it's actually a robot issue
+  if (p.robot && Object.keys(p.robot).length && isRobot) {
     lines.push('Robot / Automaat:');
     for (const [k, v] of Object.entries(p.robot)) {
       if (v) lines.push(`  ${k}: ${v}`);
@@ -312,22 +315,22 @@ function collectPharmacyContext(d, p) {
     const c = p.leveranciers?.[key];
     if (c) lines.push(`${label}: ${c.naam || '—'}${c.telefoon ? ` — ${c.telefoon}` : ''}`);
   };
-  if (isIT)      addL('it',          'IT Support');
-  if (isElec)    addL('elektricien', 'Elektricien');
-  if (isWater)   addL('loodgieter',  'Loodgieter');
-  if (isAlarm)   addL('alarm',       'Alarm/beveiliging');
-  if (isAirco)   addL('airco',       'Airco/HVAC');
+  if (isIT && !isRobot) addL('it',    'IT Support');
+  if (isElec)    addL('elektricien',  'Elektricien');
+  if (isWater)   addL('loodgieter',   'Loodgieter');
+  if (isAlarm)   addL('alarm',        'Alarm/beveiliging');
+  if (isAirco)   addL('airco',        'Airco/HVAC');
 
   // Scan p.extra for keys matching detected topics
   if (p.extra) {
     const matchers = [
-      ...(isRobot   ? [/robot|automat|dispenseer/i]       : []),
-      ...(isKoeling ? [/koel|bevrie|fridge/i]             : []),
-      ...(isElec    ? [/elektric|stroom/i]                : []),
-      ...(isWater   ? [/water|lekkage|sanitair/i]         : []),
-      ...(isAlarm   ? [/alarm|beveilig/i]                 : []),
-      ...(isAirco   ? [/airco|hvac|verwarm|ventilat/i]    : []),
-      ...(isIT      ? [/\bit\b|it[-\s]support|helpdesk/i] : []),
+      ...(isRobot   ? [/robot|automat|dispenseer/i]         : []),
+      ...(isKoeling ? [/koel|bevrie|fridge/i]               : []),
+      ...(isElec    ? [/elektric|stroom/i]                  : []),
+      ...(isWater   ? [/water|lekkage|sanitair/i]           : []),
+      ...(isAlarm   ? [/alarm|beveilig/i]                   : []),
+      ...(isAirco   ? [/airco|hvac|verwarm|ventilat/i]      : []),
+      ...(isIT && !isRobot ? [/it[-\s]support|helpdesk/i]   : []),
     ];
     if (matchers.length) {
       const extraMatched = Object.entries(p.extra)
