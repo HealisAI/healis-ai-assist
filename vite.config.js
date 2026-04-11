@@ -31,8 +31,11 @@ export default defineConfig(({ mode }) => {
             }
             return res
           }
-          const pharmaciesHandler = require('./api/pharmacies.js')
+          const pharmaciesPath = require.resolve('./api/pharmacies.js')
           server.middlewares.use('/api/pharmacies', (req, res) => {
+            // Clear require cache so file changes are picked up without restarting Vite
+            delete require.cache[pharmaciesPath]
+            const pharmaciesHandler = require(pharmaciesPath)
             pharmaciesHandler(req, adaptRes(res)).catch(err => {
               res.statusCode = 500
               res.end(JSON.stringify({ error: err.message }))
