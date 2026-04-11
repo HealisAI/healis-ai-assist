@@ -413,6 +413,8 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
     summary, description,
     priority: { name: d.priority || "Medium" },
     ...(pharmaFieldValue ? { customfield_10107: pharmaFieldValue } : {}),
+    ...(p?.email ? { customfield_10214: p.email } : {}),
+    ...(p?.phone ? { customfield_10215: p.phone } : {}),
   };
 
   switch (d.category) {
@@ -664,22 +666,40 @@ Prioriteiten:
     try {
       for (const draft of ticketDrafts) {
         const fields = buildJiraFields(draft, matchedPharmacy, inputText, jiraApotheekOptions);
-        const res = await fetch("/api/jira", {
+        let res = await fetch("/api/jira", {
           method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields })
         });
-        const data = await res.json();
+        let data = await res.json();
+        // If Jira rejects contact fields at create time, retry without them then PUT separately
+        let needsContactUpdate = false;
+        if (!res.ok && data.errors &&
+            (data.errors.customfield_10214 || data.errors.customfield_10215)) {
+          const { customfield_10214, customfield_10215, ...fieldsWithoutContact } = fields;
+          res = await fetch("/api/jira", {
+            method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields: fieldsWithoutContact })
+          });
+          data = await res.json();
+          needsContactUpdate = true;
+        }
         if (!res.ok) throw new Error(data.errorMessages?.[0] || JSON.stringify(data.errors) || `HTTP ${res.status}`);
         results.push({ key:data.key, url:`https://healis.atlassian.net/browse/${data.key}`, summary:fields.summary, project:fields.project.key, issueType:fields.issuetype.name, priority:draft.priority, category:draft.category });
-        // Set pharmacy contact fields via update (next-gen projects reject them on create)
-        if (data.key && matchedPharmacy) {
+        if (needsContactUpdate && data.key && matchedPharmacy) {
           const contactFields = {
             ...(matchedPharmacy.email ? { customfield_10214: matchedPharmacy.email } : {}),
             ...(matchedPharmacy.phone ? { customfield_10215: matchedPharmacy.phone } : {}),
           };
           if (Object.keys(contactFields).length) {
-            fetch(`/api/jira/rest/api/3/issue/${data.key}`, {
-              method:"PUT", headers:API_HEADERS, body:JSON.stringify({ fields: contactFields })
-            }).catch(() => {}); // secondary — ticket creation already succeeded
+            try {
+              const upRes = await fetch("/api/jira", {
+                method: "PUT", headers: API_HEADERS,
+                body: JSON.stringify({ issueKey: data.key, fields: contactFields }),
+              });
+              if (!upRes.ok) {
+                const upErr = await upRes.json().catch(() => ({}));
+                results[results.length - 1].contactFieldWarning =
+                  `Contactvelden niet ingevuld (${upRes.status}): ${JSON.stringify(upErr.errors || upErr.errorMessages || upErr)}`;
+              }
+            } catch { /* PUT falen blokkeert ticketcreatie niet */ }
           }
         }
       }
@@ -783,7 +803,8 @@ Prioriteiten:
         @media(max-width:780px){.select-layout{flex-direction:column-reverse;min-height:auto;flex:none}.select-left{flex:none;padding:24px 20px}.select-right{flex:none;padding:24px 16px;overflow-y:visible}}
         @keyframes hwave{0%,100%{height:5px}50%{height:28px}}
         .hwavebar{width:4px;border-radius:2px;background:#A32D2D;animation:hwave .9s ease-in-out infinite;align-self:center}
-        .htips-btn{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;transition:background .12s,color .12s;box-shadow:0 1px 6px rgba(0,0,0,.09);padding:0}
+        @keyframes htipsattract{0%,100%{box-shadow:0 1px 6px rgba(0,0,0,.09);transform:scale(1)}50%{box-shadow:0 0 0 7px rgba(0,134,36,.2),0 1px 6px rgba(0,0,0,.09);transform:scale(1.12)}}
+        .htips-btn{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;transition:background .12s,color .12s;box-shadow:0 1px 6px rgba(0,0,0,.09);padding:0;animation:htipsattract 1.1s ease 1.2s 3}
         .htips-btn:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
         .htips-drawer{position:absolute;top:0;right:0;bottom:0;width:min(290px,88%);background:var(--color-background-primary);border-left:0.5px solid var(--color-border-secondary);z-index:19;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:-6px 0 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
         .htips-drawer.open{transform:translateX(0)}
@@ -1154,43 +1175,6 @@ Prioriteiten:
               onClick={() => setStage(STAGE.SELECT)}>
               ← Terug naar apotheekselectie
             </button>
-
-            {/* Tips & tricks collapsible */}
-            <div style={{alignSelf:"stretch",borderRadius:9,border:"0.5px solid var(--color-border-secondary)",overflow:"hidden"}}>
-              <button
-                onClick={()=>setShowTips(t=>!t)}
-                style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:"var(--color-background-secondary)",border:"none",cursor:"pointer",textAlign:"left",gap:8,fontFamily:"var(--font-sans)"}}
-              >
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  <span style={{fontSize:12.5,fontWeight:600,color:"var(--color-text-secondary)"}}>Tips voor een vlotte afhandeling</span>
-                </div>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" style={{transform:showTips?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              {showTips && (
-                <div style={{padding:"12px 14px 14px",background:"var(--color-background-primary)",borderTop:"0.5px solid var(--color-border-secondary)",display:"flex",flexDirection:"column",gap:9}}>
-                  {[
-                    { icon:"👤", title:"Vermeld uzelf", text:'Begin met uw naam en functie — bijv. "Ik ben Sarah, apothekersassistente." Zo weten we wie we moeten contacteren voor opvolging.' },
-                    { icon:"📍", title:"Geef de locatie aan", text:'Zeg waar het probleem zich bevindt — "in de stockageruimte", "aan de toonbank", "bij de ingang". Hoe concreter, hoe sneller we kunnen ingrijpen.' },
-                    { icon:"🔍", title:"Wees specifiek", text:'Beschrijf wat er precies misgaat: foutmeldingen, symptomen, hoe lang al, of het alle medewerkers treft. Meer detail = snellere oplossing.' },
-                    { icon:"🚨", title:"Geef urgentie aan", text:'Als de apotheek geblokkeerd is, de koeling faalt of betalingen niet werken — zeg dit expliciet. Het systeem markeert dit automatisch als Business Critical.' },
-                    { icon:"📋", title:"Meerdere problemen?", text:'U kunt in één opname meerdere issues melden — bijv. een IT-probleem én een facilitaire kwestie. AI maakt automatisch aparte tickets aan.' },
-                  ].map(({icon,title,text})=>(
-                    <div key={title} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-                      <span style={{fontSize:16,flexShrink:0,lineHeight:"20px"}}>{icon}</span>
-                      <div>
-                        <div style={{fontSize:12.5,fontWeight:700,color:"var(--color-text-primary)",marginBottom:1}}>{title}</div>
-                        <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.55}}>{text}</div>
-                      </div>
-                    </div>
-                  ))}
-                  <div style={{marginTop:4,padding:"9px 12px",background:"#EFF6FF",borderRadius:7,border:"0.5px solid #BFDBFE"}}>
-                    <div style={{fontSize:12,fontWeight:600,color:"#1D4ED8",marginBottom:2}}>💡 Voorbeeld van een goede melding</div>
-                    <div style={{fontSize:12,color:"#1E40AF",fontStyle:"italic",lineHeight:1.6}}>"Ik ben Lien, apotheker in Aalst. Onze betaalterminal werkt niet meer — klanten kunnen niet betalen. Dit speelt al 20 minuten. Daarnaast is de tl-lamp boven de toonbank kapot."</div>
-                  </div>
-                </div>
-              )}
-            </div>
           </div></div></div>
         )}
 
