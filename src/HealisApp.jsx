@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Analytics } from '@vercel/analytics/react';
 
 const API_HEADERS = { "Content-Type": "application/json" };
 
@@ -1282,6 +1283,7 @@ Prioriteiten:
       </main>
 
       <AppFooter />
+      <Analytics />
     </div>
   );
 }
