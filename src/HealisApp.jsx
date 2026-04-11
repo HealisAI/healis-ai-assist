@@ -381,14 +381,12 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
   const summary = `[${alias || "?"}] ${d.summary || "Support issue"}`.substring(0, 255);
 
   const mkPara = t => ({ type:"paragraph", content:[{ type:"text", text:String(t) }] });
-  const mkLabel = (label, value) => ({ type:"paragraph", content:[
+  const mkLabel = (icon, label, value) => ({ type:"paragraph", content:[
+    { type:"text", text:`${icon} `, },
     { type:"text", text:label+": ", marks:[{ type:"strong" }] },
     { type:"text", text:String(value) }
   ]});
-  const mkDivider = () => mkPara("· · ·");
-  const mkBulletList = items => ({ type:"bulletList", content: items.map(t => ({
-    type:"listItem", content:[{ type:"paragraph", content:[{ type:"text", text:String(t).trim() }] }]
-  }))});
+  const mkDivider = () => mkPara("•");
   const subDisplay = getSubcategoryDisplay(d);
 
   const contextLines = collectPharmacyContext(d, p);
@@ -400,17 +398,17 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
         mkPara("🚨 Business Critical — Directe interventie vereist"),
         mkDivider(),
       ] : []),
-      mkLabel("Categorie", `${CAT_META[d.category]?.label || d.category || "Support"}${subDisplay ? ` › ${subDisplay[1]}` : ""}`),
-      ...(d.werknemer_naam ? [mkLabel("Medewerker", d.werknemer_naam)] : []),
-      mkLabel("Probleem", d.symptomen || "Zie originele melding"),
-      ...(d.foutcode ? [mkLabel("Foutcode", d.foutcode)] : []),
-      mkLabel("Actie", d.gewenste_actie || "Zie beschrijving"),
+      mkLabel("📋", "Categorie", `${CAT_META[d.category]?.label || d.category || "Support"}${subDisplay ? ` › ${subDisplay[1]}` : ""}`),
+      ...(d.werknemer_naam ? [mkLabel("👤", "Medewerker", d.werknemer_naam)] : []),
+      mkLabel("🔍", "Probleem", d.symptomen || "Zie originele melding"),
+      ...(d.foutcode ? [mkLabel("🔢", "Foutcode", d.foutcode)] : []),
+      mkLabel("✅", "Actie", d.gewenste_actie || "Zie beschrijving"),
       ...(contextLines.length ? [
         mkDivider(),
-        mkBulletList(contextLines),
+        ...contextLines.map(t => mkPara(`- ${String(t).trim()}`)),
       ] : []),
       mkDivider(),
-      mkPara(inputText),
+      mkPara(`📝 ${inputText}`),
       mkPara(`Healis AI · ${new Date().toLocaleString("nl-BE")} · confidence ${d.confidence != null ? Math.round(d.confidence*100)+"%" : "n/a"}`),
     ]
   };
