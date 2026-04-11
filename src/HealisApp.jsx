@@ -37,15 +37,78 @@ const PHARMACIES = [
   { alias:"AZU", name:"Apotheek Martens",            city:"Zutendaal",           phone:"089/61 16 74", email:"apotheek.thoen@healis.be",            province:"Limburg",         apb:"APB 716701" },
 ];
 
-function matchPharmacy(text) {
+function matchPharmacy(text, list = PHARMACIES) {
   if (!text) return null;
   const t = text.toLowerCase();
   return (
-    PHARMACIES.find(p => t.includes(p.alias.toLowerCase())) ||
-    PHARMACIES.find(p => p.name.toLowerCase().split(" ").filter(w => w.length > 3).some(w => t.includes(w))) ||
-    PHARMACIES.find(p => { const c = p.city.toLowerCase().replace(/\d+\s*/g,"").trim(); return c.length > 3 && t.includes(c); }) ||
+    list.find(p => p.alias && t.includes(p.alias.toLowerCase())) ||
+    list.find(p => p.name && p.name.toLowerCase().split(" ").filter(w => w.length > 3).some(w => t.includes(w))) ||
+    list.find(p => { if (!p.city) return false; const c = p.city.toLowerCase().replace(/\d+\s*/g,"").trim(); return c.length > 3 && t.includes(c); }) ||
     null
   );
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+// Merge Confluence data onto the hard-coded list so basic fields (city, phone,
+// email, apb, province) always come from PHARMACIES, while Confluence-only
+// fields (robot, leveranciers, extra) are added on top.
+// New pharmacies only in Confluence (not yet hard-coded) are appended as-is.
+function mergePharmacyData(confluenceList) {
+  const enriched = PHARMACIES.map(base => {
+    const cp = confluenceList.find(c => c.alias === base.alias);
+    if (!cp) return base;
+    return {
+      ...base,
+      // Only override basic fields if Confluence actually has a value
+      name:     cp.name     || base.name,
+      city:     cp.city     || base.city,
+      phone:    cp.phone    || base.phone,
+      email:    cp.email    || base.email,
+      province: cp.province || base.province,
+      apb:      cp.apb      || base.apb,
+      // Confluence-specific enrichment fields
+      ...(cp.robot        ? { robot:        cp.robot }        : {}),
+      ...(cp.leveranciers ? { leveranciers: cp.leveranciers } : {}),
+      ...(cp.extra        ? { extra:        cp.extra }        : {}),
+    };
+  });
+  // Append pharmacies only in Confluence (not yet in hard-coded list)
+  const hardCodedAliases = new Set(PHARMACIES.map(p => p.alias));
+  const onlyInConfluence = confluenceList.filter(cp => !hardCodedAliases.has(cp.alias));
+  return [...enriched, ...onlyInConfluence];
+}
+
+function formatSyncAge(ts) {
+  if (!ts) return "";
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1)  return "zojuist";
+  if (mins < 60) return `${mins} min geleden`;
+  const hrs = Math.floor(mins / 60);
+  return hrs === 1 ? "1 uur geleden" : `${hrs} uur geleden`;
+}
+
+function buildAIPharmacyContext(pharmacy, inputText) {
+  if (!pharmacy) return inputText;
+  const lines = [];
+  if (pharmacy.robot?.type) {
+    let r = `Robot: ${pharmacy.robot.type}`;
+    if (pharmacy.robot.leverancier) r += ` (leverancier: ${pharmacy.robot.leverancier}${pharmacy.robot.telefoon ? `, tel: ${pharmacy.robot.telefoon}` : ""})`;
+    lines.push(r);
+  }
+  if (pharmacy.leveranciers) {
+    for (const [type, c] of Object.entries(pharmacy.leveranciers)) {
+      if (c.naam || c.telefoon) {
+        const label = type.charAt(0).toUpperCase() + type.slice(1);
+        lines.push(`${label}: ${c.naam || ""}${c.telefoon ? ` (${c.telefoon})` : ""}`.trim());
+      }
+    }
+  }
+  if (pharmacy.extra) {
+    for (const [k, v] of Object.entries(pharmacy.extra)) lines.push(`${k}: ${v}`);
+  }
+  if (!lines.length) return inputText;
+  return `[Apotheek-specifieke info ${pharmacy.alias}:\n${lines.join("\n")}]\n\n${inputText}`;
 }
 
 // ── JIRA OPTION MAPS ──────────────────────────────────────────────────────────
@@ -220,6 +283,65 @@ function AppFooter() {
   );
 }
 
+// ── PHARMACY CONTEXT COLLECTOR ────────────────────────────────────────────────
+function collectPharmacyContext(d, p) {
+  if (!p) return [];
+  const mention = [d.summary, d.symptomen, d.subcategory_gebouw, d.subcategory_apotheek]
+    .filter(Boolean).join(' ').toLowerCase();
+  const lines = [];
+
+  const isRobot   = /robot|automat|dispenseer|dispensing/i.test(mention);
+  const isKoeling = /koel|bevrie|fridge|koelkast|koelmeubel/i.test(mention) || d.subcategory_apotheek === 'Koelmeubels';
+  const isElec    = /elektric|stroom|zekering|bedrading|stopcontact/i.test(mention) || d.subcategory_gebouw === 'Elektriciteit';
+  const isWater   = /water|lekkage|loodgieter|sanitair|vocht/i.test(mention) || d.subcategory_gebouw === 'Water';
+  const isAlarm   = /alarm|beveilig|camera/i.test(mention) || d.subcategory_gebouw === 'Alarm';
+  const isAirco   = /airco|hvac|verwarm|ventilat/i.test(mention) || d.subcategory_gebouw === 'Verwarming';
+  const isIT      = d.category === 'IT';
+
+  // Robot — dump all sub-fields when relevant
+  if (p.robot && Object.keys(p.robot).length && (isRobot || isIT)) {
+    lines.push('Robot / Automaat:');
+    for (const [k, v] of Object.entries(p.robot)) {
+      if (v) lines.push(`  ${k}: ${v}`);
+    }
+  }
+
+  // Leveranciers — per detected topic
+  const addL = (key, label) => {
+    const c = p.leveranciers?.[key];
+    if (c) lines.push(`${label}: ${c.naam || '—'}${c.telefoon ? ` — ${c.telefoon}` : ''}`);
+  };
+  if (isIT)      addL('it',          'IT Support');
+  if (isElec)    addL('elektricien', 'Elektricien');
+  if (isWater)   addL('loodgieter',  'Loodgieter');
+  if (isAlarm)   addL('alarm',       'Alarm/beveiliging');
+  if (isAirco)   addL('airco',       'Airco/HVAC');
+
+  // Scan p.extra for keys matching detected topics
+  if (p.extra) {
+    const matchers = [
+      ...(isRobot   ? [/robot|automat|dispenseer/i]       : []),
+      ...(isKoeling ? [/koel|bevrie|fridge/i]             : []),
+      ...(isElec    ? [/elektric|stroom/i]                : []),
+      ...(isWater   ? [/water|lekkage|sanitair/i]         : []),
+      ...(isAlarm   ? [/alarm|beveilig/i]                 : []),
+      ...(isAirco   ? [/airco|hvac|verwarm|ventilat/i]    : []),
+      ...(isIT      ? [/\bit\b|it[-\s]support|helpdesk/i] : []),
+    ];
+    if (matchers.length) {
+      const extraMatched = Object.entries(p.extra)
+        .filter(([k]) => matchers.some(rx => rx.test(k)))
+        .map(([k, v]) => `${k}: ${v}`);
+      if (extraMatched.length) {
+        lines.push('Extra info uit Confluence:');
+        lines.push(...extraMatched);
+      }
+    }
+  }
+
+  return lines;
+}
+
 // ── JIRA FIELD MAPPING ────────────────────────────────────────────────────────
 function getSubcategoryDisplay(d) {
   switch (d.category) {
@@ -233,8 +355,20 @@ function getSubcategoryDisplay(d) {
   }
 }
 
-function buildJiraFields(d, p, inputText) {
-  const pharmaOption = p ? JIRA_APOTHEEK_MAP[p.alias] : null;
+function buildJiraFields(d, p, inputText, apotheekOptions = []) {
+  let pharmaFieldValue = null;
+  if (p) {
+    if (apotheekOptions.length) {
+      const opt = apotheekOptions.find(o =>
+        o.value?.toUpperCase().startsWith(p.alias) ||
+        o.value?.toLowerCase().includes((p.name || '').toLowerCase())
+      );
+      pharmaFieldValue = opt ? { value: opt.value } : null;
+    } else {
+      const fallback = JIRA_APOTHEEK_MAP[p.alias];
+      pharmaFieldValue = fallback ? { value: fallback } : null;
+    }
+  }
   const alias = p ? p.alias : (d.alias_hint || "");
   const pharmaLabel = p ? `${p.alias} - ${p.name}` : (d.apotheek_hint || "Onbekende apotheek");
   const summary = `[${alias || "?"}] ${d.summary || "Support issue"}`.substring(0, 255);
@@ -242,6 +376,9 @@ function buildJiraFields(d, p, inputText) {
   const mkPara = t => ({ type:"paragraph", content:[{ type:"text", text:String(t) }] });
   const mkHeading = (t, level=3) => ({ type:"heading", attrs:{ level }, content:[{ type:"text", text:t }] });
   const subDisplay = getSubcategoryDisplay(d);
+
+  const contextLines = collectPharmacyContext(d, p);
+
   const description = {
     type:"doc", version:1,
     content:[
@@ -258,6 +395,7 @@ function buildJiraFields(d, p, inputText) {
       ...(d.foutcode ? [mkPara(`Foutcode: ${d.foutcode}`)] : []),
       mkHeading("✅ Gewenste actie"),
       mkPara(d.gewenste_actie || "Zie beschrijving"),
+      ...(contextLines.length ? [mkHeading("🏪 Apotheek-specifieke context"), ...contextLines.map(mkPara)] : []),
       mkHeading("📝 Originele melding"),
       mkPara(inputText),
       mkPara(`Healis AI · ${new Date().toLocaleString("nl-BE")} · confidence ${d.confidence != null ? Math.round(d.confidence*100)+"%" : "n/a"}`),
@@ -267,7 +405,7 @@ function buildJiraFields(d, p, inputText) {
   const base = {
     summary, description,
     priority: { name: d.priority || "Medium" },
-    ...(pharmaOption ? { customfield_10107: { value: pharmaOption } } : {}),
+    ...(pharmaFieldValue ? { customfield_10107: pharmaFieldValue } : {}),
   };
 
   switch (d.category) {
@@ -313,11 +451,75 @@ export default function HealisApp() {
   const [showTips,        setShowTips]        = useState(false);
   const [showTextInput,   setShowTextInput]   = useState(false);
   const [recSeconds,      setRecSeconds]      = useState(0);
+  const [pharmacies,      setPharmacies]      = useState(PHARMACIES);
+  const [pharmSyncTime,   setPharmSyncTime]   = useState(null);
+  const [pharmSyncLoading,setPharmSyncLoading]= useState(false);
+  const [jiraApotheekOptions, setJiraApotheekOptions] = useState([]);
 
   const srRef    = useRef(null);
   const timerRef = useRef(null);
 
   useEffect(() => () => { clearInterval(timerRef.current); srRef.current?.stop(); }, []);
+
+  // ── CONFLUENCE PHARMACY SYNC ──────────────────────────────────────────────
+  useEffect(() => {
+    const CACHE_KEY = "healis_pharmacies_cache";
+    const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+    const load = async () => {
+      // Use cached data immediately (even if stale) for fast render
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+        if (cached?.pharmacies?.length) {
+          // Invalidate caches that pre-date the merge fix (missing city field)
+          const hasComplete = cached.pharmacies.some(p => p.city);
+          if (hasComplete) {
+            setPharmacies(cached.pharmacies);
+            setPharmSyncTime(cached.fetchedAt);
+            if (cached.jiraApotheekOptions?.length) setJiraApotheekOptions(cached.jiraApotheekOptions);
+            if (Date.now() - cached.fetchedAt < CACHE_TTL) return; // fresh — skip API call
+          } else {
+            localStorage.removeItem(CACHE_KEY); // stale pre-merge cache — force refresh
+          }
+        }
+      } catch {}
+      // Fetch fresh data from Confluence (also syncs Jira custom field options)
+      setPharmSyncLoading(true);
+      try {
+        const res = await fetch("/api/pharmacies");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.pharmacies?.length) {
+          const merged = mergePharmacyData(data.pharmacies);
+          setPharmacies(merged);
+          const now = Date.now();
+          setPharmSyncTime(now);
+          if (data.jiraApotheekOptions?.length) setJiraApotheekOptions(data.jiraApotheekOptions);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            pharmacies: merged,
+            jiraApotheekOptions: data.jiraApotheekOptions || [],
+            fetchedAt: now,
+          }));
+        }
+      } catch {
+        // Silent fallback — cached or hard-coded list already in state
+      } finally {
+        setPharmSyncLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  // ── JIRA FIELD OPTIONS ────────────────────────────────────────────────────────
+  useEffect(() => {
+    fetch('/api/jira/rest/api/3/issue/createmeta?projectKeys=IT&issuetypeNames=Support&expand=projects.issuetypes.fields')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const fields = data?.projects?.[0]?.issuetypes?.[0]?.fields;
+        const opts = fields?.customfield_10107?.allowedValues;
+        if (opts?.length) setJiraApotheekOptions(opts);
+      })
+      .catch(() => {});
+  }, []);
 
   const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 
@@ -399,7 +601,7 @@ Prioriteiten:
   "gewenste_actie": "gevraagde actie",
   "confidence": 0.0
 }`,
-          messages:[{ role:"user", content:inputText }]
+          messages:[{ role:"user", content:buildAIPharmacyContext(matchedPharmacy, inputText) }]
         })
       });
       const data = await res.json();
@@ -428,7 +630,7 @@ Prioriteiten:
       } catch { throw new Error("AI parsing mislukt. Probeer opnieuw."); }
       await new Promise(r => setTimeout(r, 200));
       // Prefer the pre-selected pharmacy; otherwise detect from text
-      const detected = matchPharmacy(extracted[0]?.alias_hint || extracted[0]?.apotheek_hint || inputText);
+      const detected = matchPharmacy(extracted[0]?.alias_hint || extracted[0]?.apotheek_hint || inputText, pharmacies);
       setMatchedPharmacy(matchedPharmacy || detected);
       setTicketDrafts(extracted);
       setEditModes({});
@@ -437,7 +639,7 @@ Prioriteiten:
       } catch(err) { lastErr = err; if (attempt < MAX_RETRIES) { setProcessingMsg(`Fout, opnieuw proberen… (${attempt}/${MAX_RETRIES})`); await new Promise(r => setTimeout(r, 1500)); } }
     }
     setAppError(lastErr?.message || "Onbekende fout."); setStage(STAGE.IDLE);
-  }, [inputText, matchedPharmacy]);
+  }, [inputText, matchedPharmacy, pharmacies]);
 
   // ── JIRA CREATION ─────────────────────────────────────────────────────────
   const createTickets = useCallback(async () => {
@@ -445,7 +647,7 @@ Prioriteiten:
     const results = [];
     try {
       for (const draft of ticketDrafts) {
-        const fields = buildJiraFields(draft, matchedPharmacy, inputText);
+        const fields = buildJiraFields(draft, matchedPharmacy, inputText, jiraApotheekOptions);
         const res = await fetch("/api/jira", {
           method:"POST", headers:API_HEADERS, body:JSON.stringify({ fields })
         });
@@ -456,7 +658,7 @@ Prioriteiten:
       setCreatedTickets(results);
       setStage(STAGE.DONE);
     } catch(err) { setAppError("Jira fout: " + err.message); setStage(STAGE.REVIEW); }
-  }, [ticketDrafts, matchedPharmacy, inputText]);
+  }, [ticketDrafts, matchedPharmacy, inputText, jiraApotheekOptions]);
 
   const reset = () => {
     setStage(STAGE.SELECT); setInputText(""); setTicketDrafts([]);
@@ -470,10 +672,31 @@ Prioriteiten:
     setStage(STAGE.IDLE);
   };
 
-  const filteredPick = PHARMACIES.filter(p =>
+  const refreshPharmacies = useCallback(async () => {
+    localStorage.removeItem("healis_pharmacies_cache");
+    setPharmSyncLoading(true);
+    try {
+      const res = await fetch("/api/pharmacies");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.pharmacies?.length) {
+        const merged = mergePharmacyData(data.pharmacies);
+        setPharmacies(merged);
+        const now = Date.now();
+        setPharmSyncTime(now);
+        localStorage.setItem("healis_pharmacies_cache", JSON.stringify({ pharmacies: merged, fetchedAt: now }));
+      }
+    } catch {
+      // Silently keep existing list
+    } finally {
+      setPharmSyncLoading(false);
+    }
+  }, []);
+
+  const filteredPick = pharmacies.filter(p =>
     !pickSearch || `${p.alias} ${p.name} ${p.city}`.toLowerCase().includes(pickSearch.toLowerCase())
   );
-  const filteredPharma = PHARMACIES.filter(p =>
+  const filteredPharma = pharmacies.filter(p =>
     !pharmSearch || `${p.alias} ${p.name} ${p.city}`.toLowerCase().includes(pharmSearch.toLowerCase())
   );
   const busy = [STAGE.RECORDING, STAGE.TRANSCRIBING, STAGE.PROCESSING, STAGE.CREATING].includes(stage);
@@ -639,6 +862,23 @@ Prioriteiten:
                   <div style={{fontSize:18,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Selecteer uw apotheek</div>
                   <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
                     Kies uw apotheek zodat we uw melding automatisch kunnen koppelen.
+                  </div>
+                  {/* Confluence sync status */}
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}>
+                    {pharmSyncLoading ? (
+                      <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"var(--color-text-tertiary)"}}>
+                        <Spinner size={10} /> Lijst verversen via Confluence…
+                      </span>
+                    ) : pharmSyncTime ? (
+                      <>
+                        <span style={{fontSize:11,color:"var(--color-text-tertiary)"}}>Confluence sync: {formatSyncAge(pharmSyncTime)}</span>
+                        <button
+                          onClick={refreshPharmacies}
+                          title="Ververs apothekenlijst vanuit Confluence"
+                          style={{fontSize:12,color:"#008624",background:"none",border:"none",cursor:"pointer",padding:0,lineHeight:1}}
+                        >↻</button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
 
