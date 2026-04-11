@@ -657,6 +657,29 @@ Prioriteiten:
         const data = await res.json();
         if (!res.ok) throw new Error(data.errorMessages?.[0] || JSON.stringify(data.errors) || `HTTP ${res.status}`);
         results.push({ key:data.key, url:`https://healis.atlassian.net/browse/${data.key}`, summary:fields.summary, project:fields.project.key, issueType:fields.issuetype.name, priority:draft.priority, category:draft.category });
+        // Set pharmacy contact fields via update (next-gen projects reject them on create)
+        if (data.key && matchedPharmacy) {
+          const contactFields = {
+            ...(matchedPharmacy.email ? { customfield_10214: matchedPharmacy.email } : {}),
+            ...(matchedPharmacy.phone ? { customfield_10215: matchedPharmacy.phone } : {}),
+          };
+          if (Object.keys(contactFields).length) {
+            try {
+              const upRes = await fetch(`/api/jira/rest/api/3/issue/${data.key}`, {
+                method: "PUT", headers: API_HEADERS,
+                body: JSON.stringify({ fields: contactFields }),
+              });
+              if (!upRes.ok) {
+                const upErr = await upRes.json().catch(() => ({}));
+                console.warn("Contact fields update failed:", upErr);
+                results[results.length - 1].contactFieldWarning =
+                  `Contactvelden niet ingevuld (${upRes.status}): ${JSON.stringify(upErr.errors || upErr.errorMessages || upErr)}`;
+              }
+            } catch (e) {
+              console.warn("Contact fields update error:", e);
+            }
+          }
+        }
       }
       setCreatedTickets(results);
       setStage(STAGE.DONE);
@@ -1277,6 +1300,12 @@ Prioriteiten:
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                   Bekijk in Jira →
                 </a>
+                {ticket.contactFieldWarning && (
+                  <div style={{fontSize:11,color:"#854F0B",marginTop:6,background:"#FFF8ED",
+                    border:"0.5px solid #FAC775",borderRadius:4,padding:"4px 8px"}}>
+                    ⚠ {ticket.contactFieldWarning}
+                  </div>
+                )}
               </div>
             ))}
 
