@@ -647,10 +647,10 @@ Prioriteiten:
         const raw = (data.content?.[0]?.text || "[]").replace(/```json|```/g,"").trim();
         const parsed = JSON.parse(raw);
         extracted = Array.isArray(parsed) ? parsed : [parsed];
-        // Payment issues are always Business Critical
-        const PAYMENT_RE = /betaal|betaling|pin(nen)?|kassa|terminal|payment/i;
+        // Certain keywords always force Business Critical regardless of AI priority
+        const FORCE_BC_RE = /betaal|betaling|pin(nen)?|kassa|terminal|payment|dringend|urgent|spoed|noodgeval/i;
         extracted = extracted.map(d =>
-          PAYMENT_RE.test((d.summary || '') + ' ' + (d.description || ''))
+          FORCE_BC_RE.test(inputText + ' ' + (d.summary || '') + ' ' + (d.symptomen || ''))
             ? { ...d, priority: 'Business Critical' }
             : d
         );
