@@ -687,7 +687,11 @@ Prioriteiten:
         setPharmacies(merged);
         const now = Date.now();
         setPharmSyncTime(now);
-        localStorage.setItem("healis_pharmacies_cache", JSON.stringify({ pharmacies: merged, fetchedAt: now }));
+        if (data.jiraApotheekOptions?.length) setJiraApotheekOptions(data.jiraApotheekOptions);
+        localStorage.setItem("healis_pharmacies_cache", JSON.stringify({
+          pharmacies: merged, fetchedAt: now,
+          jiraApotheekOptions: data.jiraApotheekOptions || [],
+        }));
       }
     } catch {
       // Silently keep existing list
