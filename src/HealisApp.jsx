@@ -279,7 +279,7 @@ function AppFooter() {
           <span style={{fontSize:12,color:"#ccc",fontWeight:500}}>Healis Assist</span>
         </div>
         <div style={{fontSize:11,color:"#888"}}>
-          Intern gebruik · Apotheekmedewerkers · Alle meldingen worden als Jira ticket geregistreerd
+          Intern gebruik · Apotheekmedewerkers
         </div>
         <div style={{fontSize:11,color:"#666"}}>© {new Date().getFullYear()} Healis</div>
       </div>
