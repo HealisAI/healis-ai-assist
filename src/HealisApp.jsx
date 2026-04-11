@@ -381,11 +381,7 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
   const summary = `[${alias || "?"}] ${d.summary || "Support issue"}`.substring(0, 255);
 
   const mkPara = t => ({ type:"paragraph", content:[{ type:"text", text:String(t) }] });
-  const mkLabel = (icon, label, value) => ({ type:"paragraph", content:[
-    { type:"text", text:`${icon} ` },
-    { type:"text", text:label+": ", marks:[{ type:"strong" }] },
-    { type:"text", text:String(value) }
-  ]});
+  const mkLabel = (icon, label, value) => mkPara(`${icon} ${label}: ${String(value)}`);
   const subDisplay = getSubcategoryDisplay(d);
 
   const contextLines = collectPharmacyContext(d, p);
