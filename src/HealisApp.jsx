@@ -382,6 +382,13 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
 
   const mkPara = t => ({ type:"paragraph", content:[{ type:"text", text:String(t) }] });
   const mkHeading = (t, level=3) => ({ type:"heading", attrs:{ level }, content:[{ type:"text", text:t }] });
+  const mkLabel = (label, value) => ({ type:"paragraph", content:[
+    { type:"text", text:label+": ", marks:[{ type:"strong" }] },
+    { type:"text", text:String(value) }
+  ]});
+  const mkBulletList = items => ({ type:"bulletList", content: items.map(t => ({
+    type:"listItem", content:[{ type:"paragraph", content:[{ type:"text", text:String(t).trim() }] }]
+  }))});
   const subDisplay = getSubcategoryDisplay(d);
 
   const contextLines = collectPharmacyContext(d, p);
@@ -389,20 +396,22 @@ function buildJiraFields(d, p, inputText, apotheekOptions = []) {
   const description = {
     type:"doc", version:1,
     content:[
-      mkHeading("📍 Apotheek"),
-      mkPara(`${pharmaLabel}${p ? ` | APB: ${p.apb}` : ""}`),
-      ...(p ? [mkPara(`${p.city} | ${p.province}`), mkPara(`Tel: ${p.phone} | ${p.email}`)] : []),
-      ...(d.priority==="Business Critical" ? [mkHeading("🚨 Business Critical"), mkPara("Directe interventie vereist.")] : []),
-      mkHeading("📋 Classificatie"),
-      mkPara(`Categorie: ${CAT_META[d.category]?.label || d.category || "Support"}`),
-      ...(subDisplay ? [mkPara(`${subDisplay[0]}: ${subDisplay[1]}`)] : []),
-      ...(d.werknemer_naam ? [mkPara(`Medewerker: ${d.werknemer_naam}`)] : []),
-      mkHeading("🔍 Beschrijving"),
-      mkPara(d.symptomen || "Zie originele melding"),
-      ...(d.foutcode ? [mkPara(`Foutcode: ${d.foutcode}`)] : []),
-      mkHeading("✅ Gewenste actie"),
-      mkPara(d.gewenste_actie || "Zie beschrijving"),
-      ...(contextLines.length ? [mkHeading("🏪 Apotheek-specifieke context"), ...contextLines.map(mkPara)] : []),
+      mkHeading(`📍 ${pharmaLabel}`),
+      ...(p ? [
+        mkPara(`APB: ${p.apb}  ·  ${p.city}, ${p.province}`),
+        mkPara(`📞 ${p.phone}   ✉ ${p.email}`),
+      ] : []),
+      ...(d.priority==="Business Critical" ? [mkHeading("🚨 Business Critical — Directe interventie vereist")] : []),
+      mkHeading("📋 Melding"),
+      mkLabel("Categorie", `${CAT_META[d.category]?.label || d.category || "Support"}${subDisplay ? ` › ${subDisplay[1]}` : ""}`),
+      ...(d.werknemer_naam ? [mkLabel("Medewerker", d.werknemer_naam)] : []),
+      mkLabel("Probleem", d.symptomen || "Zie originele melding"),
+      ...(d.foutcode ? [mkLabel("Foutcode", d.foutcode)] : []),
+      mkLabel("Actie", d.gewenste_actie || "Zie beschrijving"),
+      ...(contextLines.length ? [
+        mkHeading("🏪 Context"),
+        mkBulletList(contextLines),
+      ] : []),
       mkHeading("📝 Originele melding"),
       mkPara(inputText),
       mkPara(`Healis AI · ${new Date().toLocaleString("nl-BE")} · confidence ${d.confidence != null ? Math.round(d.confidence*100)+"%" : "n/a"}`),
