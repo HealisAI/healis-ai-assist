@@ -469,14 +469,13 @@ export default function HealisApp() {
 
   // ── CONFLUENCE PHARMACY SYNC ──────────────────────────────────────────────
   useEffect(() => {
-    const CACHE_KEY = "healis_pharmacies_cache";
+    const CACHE_KEY = "healis_pharmacies_cache_v2";
     const CACHE_TTL = 60 * 60 * 1000; // 1 hour
     const load = async () => {
       // Use cached data immediately (even if stale) for fast render
       try {
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
         if (cached?.pharmacies?.length) {
-          // Invalidate caches that pre-date the merge fix (missing city field)
           const hasComplete = cached.pharmacies.some(p => p.city);
           if (hasComplete) {
             setPharmacies(cached.pharmacies);
@@ -719,7 +718,7 @@ Prioriteiten:
   };
 
   const refreshPharmacies = useCallback(async () => {
-    localStorage.removeItem("healis_pharmacies_cache");
+    localStorage.removeItem("healis_pharmacies_cache_v2");
     setPharmSyncLoading(true);
     try {
       const res = await fetch("/api/pharmacies");
@@ -731,7 +730,7 @@ Prioriteiten:
         const now = Date.now();
         setPharmSyncTime(now);
         if (data.jiraApotheekOptions?.length) setJiraApotheekOptions(data.jiraApotheekOptions);
-        localStorage.setItem("healis_pharmacies_cache", JSON.stringify({
+        localStorage.setItem("healis_pharmacies_cache_v2", JSON.stringify({
           pharmacies: merged, fetchedAt: now,
           jiraApotheekOptions: data.jiraApotheekOptions || [],
         }));
