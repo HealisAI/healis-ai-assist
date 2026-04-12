@@ -873,7 +873,7 @@ Prioriteiten:
                     </div>
                     <div>
                       <div style={{fontSize:15,fontWeight:700,color:"var(--color-text-primary)",marginBottom:4}}>Onboarding</div>
-                      <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.6}}>Een warm welkom voor nieuwe apotheken en collega's — zodat iedereen zich snel thuis voelt binnen het Healis-team.</div>
+                      <div style={{fontSize:12,color:"var(--color-text-secondary)",lineHeight:1.6}}>Een warm welkom voor nieuwe collega's — zodat iedereen zich snel thuis voelt binnen het Healis-team.</div>
                     </div>
                     <span className="hub-badge-soon">Binnenkort beschikbaar</span>
                   </div>
