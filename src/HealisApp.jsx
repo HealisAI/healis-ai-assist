@@ -697,6 +697,9 @@ Prioriteiten:
         }
       }
       setCreatedTickets(results);
+      // Geef Jira ~2s om de PUT-writes te propageren voor de gebruiker
+      // doorklinkt — anders lijkt email leeg bij direct openen.
+      await new Promise(r => setTimeout(r, 2000));
       setStage(STAGE.DONE);
     } catch(err) { setAppError("Jira fout: " + err.message); setStage(STAGE.REVIEW); }
   }, [ticketDrafts, matchedPharmacy, inputText, jiraApotheekOptions]);
